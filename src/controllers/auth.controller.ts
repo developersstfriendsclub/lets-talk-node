@@ -54,6 +54,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
 
 
 
-export const dashboard = async (req: Request, res: Response) => {
-  res.json({ message: `Welcome ${(req as any).user.email}` });
+export const getHostDetails = async (req: Request, res: Response) => {
+  const user = await User.findAll();
+  return res.status(200).json({data:user});
 };
