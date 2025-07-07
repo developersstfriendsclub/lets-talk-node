@@ -1,0 +1,15 @@
+package-lock.json
+./package-lock.json
+node_modules
+./node_modules
+dist
+./dist
+uploads
+./uploads
+public
+./public
+./package-lock.json
+/package-lock.json
+package-lock.json
+logs
+coverage
