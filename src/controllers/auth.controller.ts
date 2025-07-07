@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { User } from '../models/user.model';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import { generateAgoraToken } from '../utils/generateToken';
 
 export const signUp = async (req: Request, res: Response) => {
   try {
@@ -28,10 +29,30 @@ export const signIn = async (req: Request, res: Response) => {
   res.json({ token });
 };
 
+export const generateVideoCallToken = async (req: Request, res: Response) => {
+  const channelName = req.query.channelName as string;
+  const uid = parseInt(req.query.uid as string) || 0;
+
+  if (!channelName) {
+    return res.status(400).json({ error: 'channelName is required' });
+  }
+
+  try {
+    const token = generateAgoraToken(channelName, uid);
+    return res.json({ token });
+  } catch (error) {
+    console.error('Token generation error:', error);
+    return res.status(500).json({ error: 'Failed to generate token' });
+  }
+};
+
 export const forgotPassword = async (req: Request, res: Response) => {
   const { email } = req.body;
   res.json({ message: `Password reset link sent to ${email}` });
 };
+
+
+
 
 export const dashboard = async (req: Request, res: Response) => {
   res.json({ message: `Welcome ${(req as any).user.email}` });
