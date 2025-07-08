@@ -3,7 +3,7 @@ import { RtcTokenBuilder, RtcRole } from 'agora-access-token';
 export const generateAgoraToken = (
   channelName: string,
   uid: number = 0,
-  role: RtcRole = RtcRole.PUBLISHER
+  role: number = RtcRole.PUBLISHER
 ): string => {
   const appID = process.env.AGORA_APP_ID!;
   const appCertificate = process.env.AGORA_APP_CERTIFICATE!;
