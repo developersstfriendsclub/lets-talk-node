@@ -2,6 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth.routes';
 import { sequelize } from './config/database';
+import { syncDatabase } from './databaseSync';
 
 dotenv.config();
 
@@ -12,6 +13,13 @@ app.use(express.json());
 app.use('/api/v1', authRoutes);
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+
+// Start server after database sync
+const startServer = async () => {
+  await syncDatabase();
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+  });
+};
+
+startServer();

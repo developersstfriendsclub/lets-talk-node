@@ -11,7 +11,7 @@ export const signUp = async (req: Request, res: Response, next: NextFunction) =>
     const hashed = await bcrypt.hash(password, 10);
     const user = await User.create(
       { email, password: hashed , name , gender , phone , dob ,  });
-    sendSuccess(res, { user }, 'User created successfully', 201);
+    sendSuccess(res,  user , 'User created successfully', 201);
   } catch (err) {
     next(err);
   }
@@ -72,7 +72,7 @@ export const forgotPassword = async (req: Request, res: Response, next: NextFunc
 export const getHostDetails = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const users = await User.findAll();
-    sendSuccess(res, { users }, 'Host details retrieved successfully');
+    sendSuccess(res, users , 'Host details retrieved successfully');
   } catch (err) {
     next(err);
   }

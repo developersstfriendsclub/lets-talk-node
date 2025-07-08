@@ -1,13 +1,14 @@
 import { DataTypes, Model } from 'sequelize';
 import { sequelize } from '../config/database';
 
-export class User extends Model {
+export class Role extends Model {
   public id!: number;
-  public email!: string;
-  public password!: string;
+  public name!: string;
+  public type!: string;
+  public description!: string;
 }
 
-User.init({
+Role.init({
         id: {
           type: DataTypes.INTEGER,
           autoIncrement: true,
@@ -43,41 +44,20 @@ User.init({
           allowNull: true,
         },
 
-        roleId: {
-          type: DataTypes.INTEGER,
-          allowNull: true,
-          references: {
-            model: 'roles',
-            key: 'id',
-          },
-          onDelete: 'CASCADE',
-        },
-        email: {
+        type: {
           type: DataTypes.STRING(50),
-          allowNull: true,
-        },
-        password: {
-          type: DataTypes.STRING(50),
-          allowNull: true,
-        },
-        gender: {
-          type: DataTypes.STRING(10),
-          allowNull: true,
-        },
-        phone: {
-          type: DataTypes.STRING(20),
           allowNull: true,
         },
 
-        dob: {
-          type: DataTypes.DATEONLY,
+        description: {
+          type: DataTypes.STRING(50),
           allowNull: true,
         },
 },{
     sequelize,
-    modelName: 'User',
-    tableName: 'users',
+    modelName: 'Role',
+    tableName: 'roles',
     timestamps: true,
-    paranoid: true, // This enables soft deletes (deletedAt)
+    paranoid: true,
     deletedAt: 'deletionDate',
   });
