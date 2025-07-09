@@ -3,10 +3,13 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/auth.routes';
 import { sequelize } from './config/database';
 import { syncDatabase } from './databaseSync';
+import cors from 'cors';
 
 dotenv.config();
 
 const app = express();
+app.use(cors()); // Allows all origins (Not recommended for production)
+
 app.use(express.json());
 
 // 🔥 THIS defines the base route for your API
