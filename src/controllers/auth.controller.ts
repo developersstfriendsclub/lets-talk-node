@@ -3,7 +3,7 @@ import { User } from '../models/user.model';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { generateAgoraToken } from '../utils/generateToken';
-import { sendSuccess, sendError, sendValidationError, sendUnauthorized } from '../utils/response';
+import { sendSuccess, sendError, sendValidationError, sendUnauthorized, sendNotFound } from '../utils/response';
 
 export const signUp = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -29,6 +29,7 @@ export const signIn = async (req: Request, res: Response, next: NextFunction) =>
     }
 
     const valid = await bcrypt.compare(password, user.password);
+    
     if (!valid) {
       sendUnauthorized(res, 'Invalid credentials');
       return;
@@ -63,6 +64,46 @@ export const forgotPassword = async (req: Request, res: Response, next: NextFunc
   try {
     const { email } = req.body;
     sendSuccess(res, { email }, `Password reset link sent to ${email}`);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const updateUser = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = (req as any).user?.id;
+    if (!userId) {
+      sendUnauthorized(res, 'User not authenticated');
+      return;
+    }
+    const updateFields = (({
+      name, gender, phone, dob, interests, sports, film, music, travelling, food, image
+    }) => ({ name, gender, phone, dob, interests, sports, film, music, travelling, food, image }))(req.body);
+    const [updated] = await User.update(updateFields, { where: { id: userId } });
+    if (!updated) {
+      sendNotFound(res, 'User not found');
+      return;
+    }
+    const updatedUser = await User.findByPk(userId);
+    sendSuccess(res, updatedUser, 'User updated successfully');
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getUserById = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = (req as any).user?.id;
+    if (!userId) {
+      sendUnauthorized(res, 'User not authenticated');
+      return;
+    }
+    const user = await User.findByPk(userId);
+    if (!user) {
+      sendNotFound(res, 'User not found');
+      return;
+    }
+    sendSuccess(res, user, 'User details retrieved successfully');
   } catch (err) {
     next(err);
   }
