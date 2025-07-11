@@ -73,6 +73,34 @@ User.init({
           type: DataTypes.DATEONLY,
           allowNull: true,
         },
+        interests: {
+          type: DataTypes.JSON,
+          allowNull: true,
+        },
+        sports: {
+          type: DataTypes.JSON,
+          allowNull: true,
+        },
+        film: {
+          type: DataTypes.JSON,
+          allowNull: true,
+        },
+        music: {
+          type: DataTypes.JSON,
+          allowNull: true,
+        },
+        travelling: {
+          type: DataTypes.JSON,
+          allowNull: true,
+        },
+        food: {
+          type: DataTypes.JSON,
+          allowNull: true,
+        },
+        image: {
+          type: DataTypes.TEXT,
+          allowNull: true,
+        },
 },{
     sequelize,
     modelName: 'User',
