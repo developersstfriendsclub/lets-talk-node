@@ -1,8 +1,7 @@
 import { RtcTokenBuilder, RtcRole } from 'agora-access-token';
 import { Request, Response } from 'express';
-// import { generateAgoraToken } from '../utils/generateToken';
 
-export const generateAgoraTokenee = (
+export const generateAgoraTokenMain = (
   channelName: string,
   uid: number = 0,
   role: number = RtcRole.PUBLISHER
@@ -32,7 +31,7 @@ export const generateAgoraToken = (req: Request, res: Response) => {
     return res.status(400).json({ error: 'channelName and uid are required' });
   }
   try {
-    const token = generateAgoraTokenee(channelName as string, Number(uid));
+    const token = generateAgoraTokenMain(channelName as string, Number(uid));
     // Return in the format your frontend expects:
     res.json({ data: { token } });
   } catch (err:any) {
