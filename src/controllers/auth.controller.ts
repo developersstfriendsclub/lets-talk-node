@@ -42,16 +42,21 @@ export const signIn = async (req: Request, res: Response, next: NextFunction) =>
   }
 };
 
-export const getAgoraToken = (req: Request, res: Response) => {
-  const { channelName, uid } = req.query;
-  if (!channelName || !uid) {
-    return res.status(400).json({ error: 'channelName and uid are required' });
+export const generateVideoCallToken = async (req: Request, res: Response, next: NextFunction) => {
+  const channelName = req.query.channelName as string;
+  const uid = parseInt(req.query.uid as string) || 0;
+
+  if (!channelName) {
+    sendValidationError(res, 'channelName is required');
+    return;
   }
+
   try {
-    const token = generateAgoraToken(channelName as string, Number(uid));
-    res.json({ data: { token } });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    const token = generateAgoraToken(channelName, uid);
+    sendSuccess(res, { token }, 'Video call token generated successfully');
+  } catch (error) {
+    console.error('Token generation error:', error);
+    next(error);
   }
 };
 
