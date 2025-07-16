@@ -4,6 +4,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { generateAgoraToken } from '../utils/generateToken';
 import { sendSuccess, sendError, sendValidationError, sendUnauthorized, sendNotFound } from '../utils/response';
+import Image from '../models/image.model';
 
 export const signUp = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -98,7 +99,17 @@ export const getUserById = async (req: Request, res: Response, next: NextFunctio
       sendUnauthorized(res, 'User not authenticated');
       return;
     }
-    const user = await User.findByPk(userId);
+    const user = await User.findOne({
+      where:{
+        id:userId
+      },
+      include:[
+        {
+          model:Image,
+          order: [['id', 'DESC']]
+        }
+      ]
+    });
     if (!user) {
       sendNotFound(res, 'User not found');
       return;
