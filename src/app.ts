@@ -14,7 +14,8 @@ dotenv.config();
 const app = express();
 app.use(cors()); // Allows all origins (Not recommended for production)
 
-app.use(express.json());
+app.use(express.json({ limit: '1024mb' }));
+app.use(express.urlencoded({ limit: '1024mb', extended: true }));
 
 // Serve static files from uploads directory
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
