@@ -6,6 +6,7 @@ import path from 'path';
 import fs from 'fs';
 import Image from '../models/image.model';
 import { sendSuccess, sendError, sendNotFound, sendValidationError } from '../utils/response';
+import { User } from '../models/user.model';
 
 // Configure multer for file upload
 const storage = multer.diskStorage({
@@ -212,6 +213,11 @@ export const getImageByTypeWise = async (req: Request, res: Response): Promise<v
         image_type: image_type_value,
         userId,
       },
+      include:[
+        {
+          model:User
+        }
+      ],
       order: [['id', 'DESC']],
     });
 
