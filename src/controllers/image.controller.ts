@@ -202,20 +202,20 @@ export const getImageById = async (req: Request, res: Response): Promise<void> =
 export const getImageByTypeWise = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user.id;
-    const { image_type } = req.body;
-    if (image_type) {
+    const  image_type_value  = req.body.image_type;
+    if (!image_type_value) {
       sendNotFound(res, 'image type is required !!');
     }
 
     const image = await Image.findAll({
       where: {
-        image_type: image_type,
+        image_type: image_type_value,
         userId,
       },
       order: [['id', 'DESC']],
     });
 
-    if (!image) {
+    if (image.length == 0) {
       sendNotFound(res, 'Image not found');
       return;
     }
