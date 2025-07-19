@@ -5,6 +5,7 @@ interface ImageAttributes {
   id: number;
   userId: number;
   title: string;
+  image_type: string;
   description?: string;
   filename: string;
   originalName: string;
@@ -25,6 +26,7 @@ class Image extends Model<ImageAttributes, ImageCreationAttributes> implements I
   public id!: number;
   public userId!: number;
   public title!: string;
+  public image_type!: string;
   public description?: string;
   public filename!: string;
   public originalName!: string;
@@ -55,6 +57,10 @@ Image.init(
       },
     },
     title: {
+      type: DataTypes.STRING(255),
+      allowNull: false,
+    },
+    image_type: {
       type: DataTypes.STRING(255),
       allowNull: false,
     },

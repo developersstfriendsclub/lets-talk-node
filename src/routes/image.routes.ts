@@ -7,7 +7,8 @@ import {
   getImageById,
   updateImage,
   deleteImage,
-  upload
+  upload,
+  getImageByTypeWise
 } from '../controllers/image.controller';
 
 const router = Router();
@@ -32,6 +33,11 @@ router.post(
 router.get(
   '/',
   getAllImages
+);
+
+router.post(
+  '/single/types_wise',
+  getImageByTypeWise
 );
 
 // Get single image by ID

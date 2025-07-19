@@ -43,7 +43,7 @@ export const upload = multer({
 export const createSingleImage = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user.id;
-    const { title, description, isPublic } = req.body;
+    const { title,image_type, description, isPublic } = req.body;
     
     if (!req.file) {
       sendValidationError(res, 'Image file is required');
@@ -60,6 +60,7 @@ export const createSingleImage = async (req: Request, res: Response): Promise<vo
     const image = await Image.create({
       userId,
       title,
+      image_type,
       description,
       filename: file.filename,
       originalName: file.originalname,
@@ -82,7 +83,7 @@ export const createSingleImage = async (req: Request, res: Response): Promise<vo
 export const createSingleImageFromBase64 = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user.id;
-    const { title, description, isPublic, base64Data, fileName, mimeType } = req.body;
+    const { title, description,image_type, isPublic, base64Data, fileName, mimeType } = req.body;
     
     if (!base64Data) {
       sendValidationError(res, 'Base64 image data is required');
@@ -114,6 +115,7 @@ export const createSingleImageFromBase64 = async (req: Request, res: Response): 
     const image = await Image.create({
       userId,
       title,
+      image_type,
       description,
       filename: uniqueName,
       originalName: fileName || 'base64-image.jpg',
@@ -181,6 +183,30 @@ export const getImageById = async (req: Request, res: Response): Promise<void> =
     const image = await Image.findOne({
       where: {
         id: parseInt(id),
+        userId,
+      }
+    });
+
+    if (!image) {
+      sendNotFound(res, 'Image not found');
+      return;
+    }
+
+    sendSuccess(res, image, 'Image retrieved successfully');
+  } catch (error) {
+    sendError(res, 'Failed to retrieve image', 500, error);
+  }
+};
+
+// Get image by image type wise
+export const getImageByTypeWise = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).user.id;
+    const { image_type } = req.body;
+
+    const image = await Image.findOne({
+      where: {
+        image_type: image_type,
         userId,
       }
     });
