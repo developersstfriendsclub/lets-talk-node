@@ -171,7 +171,16 @@ export const getUserById = async (req: Request, res: Response, next: NextFunctio
 export const getHostDetails = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const users = await User.findAll();
-    sendSuccess(res, users , 'Host details retrieved successfully');
+    const maskedUsers = users.map(user => {
+      const userObj = user.toJSON();
+      return {
+        ...userObj,
+        email: maskEmail(userObj.email),
+        phone: maskPhone(userObj.phone),
+        name: maskName(userObj.name)
+      };
+    });
+    sendSuccess(res, maskedUsers , 'Host details retrieved successfully');
   } catch (err) {
     next(err);
   }
