@@ -8,12 +8,19 @@ import Image from '../models/image.model';
 
 export const signUp = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { email, password , name , gender , phone , dob ,  } = req.body;
+    const { email, password , name , gender , phone , dob } = req.body;
+    // Check for duplicate email
+    const existingUser = await User.findOne({ where: { email } });
+    if (existingUser) {
+      return sendError(res, 'User with this email already exists', 409);
+    }
     const hashed = await bcrypt.hash(password, 10);
     const user = await User.create(
-      { email, password: hashed , name , gender , phone , dob ,  });
+      { email, password: hashed , name , gender , phone , dob });
     sendSuccess(res,  user , 'User created successfully', 201);
   } catch (err) {
+    // Log the full error object for debugging
+    console.error('SignUp Error:', err);
     next(err);
   }
 };
