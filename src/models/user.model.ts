@@ -1,4 +1,4 @@
-import { DataTypes, Model } from 'sequelize';
+import { DataTypes, Model, Op } from 'sequelize';
 import { sequelize } from '../config/database';
 
 export class User extends Model {
@@ -42,7 +42,10 @@ User.init({
           type: DataTypes.STRING(50),
           allowNull: true,
         },
-
+        user_profile_id: {
+          type: DataTypes.STRING(50),
+          allowNull: true,
+        },
         roleId: {
           type: DataTypes.INTEGER,
           allowNull: true,
@@ -108,4 +111,29 @@ User.init({
     timestamps: true,
     paranoid: true, // This enables soft deletes (deletedAt)
     deletedAt: 'deletionDate',
+    hooks: {
+      beforeCreate: async (user: any) => {
+        try {
+          const lastUser = await User.findOne({
+            order: [['createdAt', 'DESC']],
+            where: {
+              user_profile_id: { [Op.ne]: null }
+            }
+          });
+          let nextId = 2410; // Default start
+          const lastProfileId = lastUser ? lastUser.get('user_profile_id') : null;
+          if (typeof lastProfileId === 'string') {
+            const match = lastProfileId.match(/FDCK(\d{4})/);
+            if (match) {
+              nextId = parseInt(match[1], 10) + 1;
+            }
+          }
+          user.user_profile_id = `FDCK${nextId}`;
+        } catch (err) {
+          console.error('Error generating user_profile_id:', err);
+          // Use a timestamp-based fallback to ensure uniqueness
+          user.user_profile_id = `FDCK${Date.now().toString().slice(-4)}`;
+        }
+      }
+    }
   });

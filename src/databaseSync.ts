@@ -20,7 +20,7 @@ BankAccount.belongsTo(User, { foreignKey: 'userId', onDelete: 'CASCADE' });
 
 export const syncDatabase = async () => {
   try {
-    await sequelize.sync({ alter: false });
+    await sequelize.sync({ alter: true });
     console.log('✅ Database tables synchronized successfully');
   } catch (error) {
     console.error('❌ Database sync error:', error);
