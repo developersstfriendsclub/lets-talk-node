@@ -6,6 +6,28 @@ import { generateAgoraToken } from '../utils/generateToken';
 import { sendSuccess, sendError, sendValidationError, sendUnauthorized, sendNotFound } from '../utils/response';
 import Image from '../models/image.model';
 
+// Helper functions for masking
+function maskEmail(email: string): string {
+  if (!email) return '';
+  const [user, domain] = email.split('@');
+  if (user.length <= 5) return '*'.repeat(user.length) + '@' + domain;
+  return '*'.repeat(5) + user.slice(5) + '@' + domain;
+}
+
+function maskPhone(phone: string): string {
+  if (!phone) return '';
+  // Remove non-digits for masking, but keep original format
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length <= 4) return '*'.repeat(digits.length);
+  return digits.slice(0, digits.length - 4) + '****';
+}
+
+function maskName(name: string): string {
+  if (!name) return '';
+  if (name.length <= 2) return name[0] + '*';
+  return name[0] + '*'.repeat(name.length - 2) + name[name.length - 1];
+}
+
 export const signUp = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email, password , name , gender , phone , dob } = req.body;
@@ -17,7 +39,15 @@ export const signUp = async (req: Request, res: Response, next: NextFunction) =>
     const hashed = await bcrypt.hash(password, 10);
     const user = await User.create(
       { email, password: hashed , name , gender , phone , dob });
-    sendSuccess(res,  user , 'User created successfully', 201);
+    // Mask sensitive fields in response
+    const userObj = user.toJSON();
+    const maskedUser = {
+      ...userObj,
+      email: maskEmail(userObj.email),
+      phone: maskPhone(userObj.phone),
+      name: maskName(userObj.name)
+    };
+    sendSuccess(res,  maskedUser , 'User created successfully', 201);
   } catch (err) {
     // Log the full error object for debugging
     console.error('SignUp Error:', err);
@@ -121,7 +151,15 @@ export const getUserById = async (req: Request, res: Response, next: NextFunctio
       sendNotFound(res, 'User not found');
       return;
     }
-    sendSuccess(res, user, 'User details retrieved successfully');
+    // Mask sensitive fields in response
+    const userObj = user.toJSON();
+    const maskedUser = {
+      ...userObj,
+      email: maskEmail(userObj.email),
+      phone: maskPhone(userObj.phone),
+      name: maskName(userObj.name)
+    };
+    sendSuccess(res, maskedUser, 'User details retrieved successfully');
   } catch (err) {
     next(err);
   }
