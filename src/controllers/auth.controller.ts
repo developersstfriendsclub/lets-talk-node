@@ -170,7 +170,14 @@ export const getUserById = async (req: Request, res: Response, next: NextFunctio
 
 export const getHostDetails = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const users = await User.findAll();
+    const users = await User.findAll({
+      include:[
+        {
+          model:Image,
+          order: [['id', 'DESC']]
+        }
+      ]
+    });
     const maskedUsers = users.map(user => {
       const userObj = user.toJSON();
       return {
