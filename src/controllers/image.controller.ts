@@ -40,12 +40,57 @@ export const upload = multer({
   }
 });
 
-// Create single image (file upload)
+// // Create single image (file upload)
+// export const createSingleImage = async (req: Request, res: Response): Promise<void> => {
+//   try {
+//     const userId = (req as any).user.id;
+//     const { title,image_type, description, isPublic } = req.body;
+    
+//     if (!req.file) {
+//       sendValidationError(res, 'Image file is required');
+//       return;
+//     }
+
+//     const file = req.file;
+//     const imagePath = file.path;
+//     const imageUrl = `${req.protocol}://${req.get('host')}/uploads/images/${file.filename}`;
+
+//     // Get image dimensions
+//     const imageInfo = await sharp(imagePath).metadata();
+
+//     const image = await Image.create({
+//       userId,
+//       title,
+//       image_type,
+//       description,
+//       filename: file.filename,
+//       originalName: file.originalname,
+//       mimeType: file.mimetype,
+//       size: file.size,
+//       path: imagePath,
+//       url: imageUrl,
+//       width: imageInfo.width,
+//       height: imageInfo.height,
+//       isPublic: isPublic || false,
+//     });
+
+//     sendSuccess(res, image, 'Image uploaded successfully');
+//   } catch (error) {
+//     sendError(res, 'Failed to upload image', 500, error);
+//   }
+// };
+
+
 export const createSingleImage = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = (req as any).user.id;
-    const { title,image_type, description, isPublic } = req.body;
-    
+    const userId = (req as any)?.user?.id;
+    const { title, image_type, description, isPublic } = req.body;
+
+    if (!userId) {
+      sendValidationError(res, 'User authentication failed');
+      return;
+    }
+
     if (!req.file) {
       sendValidationError(res, 'Image file is required');
       return;
@@ -53,6 +98,13 @@ export const createSingleImage = async (req: Request, res: Response): Promise<vo
 
     const file = req.file;
     const imagePath = file.path;
+
+    // Ensure upload folder exists (in case of misconfig)
+    const uploadDir = path.join(__dirname, '../uploads/images');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
     const imageUrl = `${req.protocol}://${req.get('host')}/uploads/images/${file.filename}`;
 
     // Get image dimensions
@@ -60,25 +112,27 @@ export const createSingleImage = async (req: Request, res: Response): Promise<vo
 
     const image = await Image.create({
       userId,
-      title,
-      image_type,
-      description,
+      title: title?.trim() || null,
+      image_type: image_type?.trim() || null,
+      description: description?.trim() || null,
       filename: file.filename,
       originalName: file.originalname,
       mimeType: file.mimetype,
       size: file.size,
       path: imagePath,
       url: imageUrl,
-      width: imageInfo.width,
-      height: imageInfo.height,
-      isPublic: isPublic || false,
+      width: imageInfo.width || 0,
+      height: imageInfo.height || 0,
+      isPublic: isPublic === 'true' || isPublic === true || false,
     });
 
     sendSuccess(res, image, 'Image uploaded successfully');
   } catch (error) {
+    console.error('Image Upload Error:', error);
     sendError(res, 'Failed to upload image', 500, error);
   }
 };
+
 
 // Create single image from base64
 export const createSingleImageFromBase64 = async (req: Request, res: Response): Promise<void> => {

@@ -420,3 +420,11 @@ The API includes comprehensive error handling:
 - Server errors (500)
 
 All errors return consistent response formats with appropriate HTTP status codes. 
+
+## Running with Socket.IO (for video call frontend)
+
+```
+npm run start:socket
+```
+
+This will start the backend with both REST API and Socket.IO support on port 5000. 

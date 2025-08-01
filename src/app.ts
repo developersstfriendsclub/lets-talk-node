@@ -5,6 +5,7 @@ import authRoutes from './routes/auth.routes';
 import imageRoutes from './routes/image.routes';
 import videoRoutes from './routes/video.routes';
 import bankAccountRoutes from './routes/bankAccount.routes';
+import videoCallRoutes from './routes/videoCall.routes';
 import { sequelize } from './config/database';
 import { syncDatabase } from './databaseSync';
 import cors from 'cors';
@@ -25,6 +26,7 @@ app.use('/api/v1', authRoutes);
 app.use('/api/v1/images', imageRoutes);
 app.use('/api/v1/videos', videoRoutes);
 app.use('/api/v1/bank-accounts', bankAccountRoutes);
+app.use('/api/v1/video-calls', videoCallRoutes);
 
 const PORT = process.env.PORT || 5000;
 
@@ -37,3 +39,5 @@ const startServer = async () => {
 };
 
 startServer();
+
+export default app;
