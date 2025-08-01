@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import { generateAgoraToken } from '../utils/generateToken';
 import { sendSuccess, sendError, sendValidationError, sendUnauthorized, sendNotFound } from '../utils/response';
 import Image from '../models/image.model';
+import axios from 'axios';
 
 // Helper functions for masking
 function maskEmail(email: string): string {
@@ -30,7 +31,7 @@ function maskName(name: string): string {
 
 export const signUp = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { email, password , name , gender , phone , dob } = req.body;
+    const { email, password, name, gender, phone, dob } = req.body;
     // Check for duplicate email
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
@@ -38,7 +39,7 @@ export const signUp = async (req: Request, res: Response, next: NextFunction) =>
     }
     const hashed = await bcrypt.hash(password, 10);
     const user = await User.create(
-      { email, password: hashed , name , gender , phone , dob });
+      { email, password: hashed, name, gender, phone, dob });
     // Mask sensitive fields in response
     const userObj = user.toJSON();
     const maskedUser = {
@@ -47,7 +48,7 @@ export const signUp = async (req: Request, res: Response, next: NextFunction) =>
       phone: maskPhone(userObj.phone),
       name: maskName(userObj.name)
     };
-    sendSuccess(res,  maskedUser , 'User created successfully', 201);
+    sendSuccess(res, maskedUser, 'User created successfully', 201);
   } catch (err) {
     // Log the full error object for debugging
     console.error('SignUp Error:', err);
@@ -67,7 +68,7 @@ export const signIn = async (req: Request, res: Response, next: NextFunction) =>
     }
 
     const valid = await bcrypt.compare(password, user.password);
-    
+
     if (!valid) {
       sendUnauthorized(res, 'Invalid credentials');
       return;
@@ -139,12 +140,12 @@ export const getUserById = async (req: Request, res: Response, next: NextFunctio
       return;
     }
     const user = await User.findOne({
-      where:{
-        id:userId
+      where: {
+        id: userId
       },
-      include:[
+      include: [
         {
-          model:Image,
+          model: Image,
           order: [['id', 'DESC']]
         }
       ]
@@ -173,9 +174,9 @@ export const getUserById = async (req: Request, res: Response, next: NextFunctio
 export const getHostDetails = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const users = await User.findAll({
-      include:[
+      include: [
         {
-          model:Image,
+          model: Image,
           order: [['id', 'DESC']]
         }
       ]
@@ -189,8 +190,63 @@ export const getHostDetails = async (req: Request, res: Response, next: NextFunc
         name: maskName(userObj.name)
       };
     });
-    sendSuccess(res, maskedUsers , 'Host details retrieved successfully');
+    sendSuccess(res, maskedUsers, 'Host details retrieved successfully');
   } catch (err) {
     next(err);
   }
 };
+
+
+export const sendOtp = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const FIREBASE_API_KEY = "AIzaSyD-dUR6ctYXWQc6ZCxrzXYK1_dTWM0SNbI"; // From your config
+
+    const { phone } = req.body;
+
+    // Firebase requires a reCAPTCHA token in front-end. On backend, bypass using test numbers only.
+    const response = await axios.post(
+      `https://identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode?key=${FIREBASE_API_KEY}`,
+      {
+        phoneNumber: phone,
+        recaptchaToken: "ignored" // Needed on front-end only
+      }
+    );
+
+    res.json({
+      sessionInfo: response.data.sessionInfo,
+      message: "OTP sent successfully"
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      error: error.response?.data?.error || error.message
+    });
+  }
+};
+
+
+export const verifiedOtp = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const FIREBASE_API_KEY = "AIzaSyD-dUR6ctYXWQc6ZCxrzXYK1_dTWM0SNbI"; // From your config
+
+    const { sessionInfo, code } = req.body;
+
+    const response = await axios.post(
+      `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPhoneNumber?key=${FIREBASE_API_KEY}`,
+      {
+        sessionInfo,
+        code
+      }
+    );
+
+    res.json({
+      idToken: response.data.idToken, // use this to authenticate further requests
+      phoneNumber: response.data.phoneNumber,
+      message: "OTP verified successfully"
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      error: error.response?.data?.error || error.message
+    });
+  }
+};
+
