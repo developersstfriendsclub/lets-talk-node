@@ -1,0 +1,10 @@
+---
+deployment:
+  tasks:
+    - export APPDIR=/home/ambujchand/lets-talk
+    - cd $APPDIR
+    - /bin/rm -rf node_modules dist
+    - /usr/local/bin/npm install
+    - /usr/local/bin/npm run build
+    - /usr/local/bin/pm2 stop lets-talk || true
+    - /usr/local/bin/pm2 start dist/app.js --name lets-talk
