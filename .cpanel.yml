@@ -1,7 +1,7 @@
 ---
 deployment:
   tasks:
-    - export APPDIR=/home/yvysduaz/lets-talk
+    - export APPDIR=/home1/yvysduaz/repositories/lets-talk-node
     - cd $APPDIR
     - /bin/rm -rf node_modules dist
     - /usr/local/bin/npm install
