@@ -39,7 +39,8 @@ export const signUp = async (req: Request, res: Response, next: NextFunction) =>
     }
     const hashed = await bcrypt.hash(password, 10);
     const user = await User.create(
-      { email, password: hashed, name, gender, phone, dob });
+      { email, password: hashed, name, gender, phone, dob , roleId: 1 }
+    );
     // Mask sensitive fields in response
     const userObj = user.toJSON();
     const maskedUser = {
