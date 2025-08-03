@@ -2,7 +2,7 @@ import express, { RequestHandler } from 'express';
 import { signUp, signIn, forgotPassword, generateVideoCallToken  , getHostDetails, updateUser, getUserById, sendOtp, verifiedOtp } from '../controllers/auth.controller';
 import { verifyToken } from '../middleware/auth.middleware';
 import { signUpValidation, signInValidation, validateRequestSchema, updateUserValidation } from '../validators/auth.validator';
-import { useSignIn } from '../controllers/userAuth.controller';
+import { getAdminDetailsById, getUserDetailsById, hostListForAdmin, hostListForUser, useSignIn } from '../controllers/userAuth.controller';
 
 const router = express.Router();
 
@@ -15,12 +15,13 @@ router.get('/show-profile', verifyToken, getUserById as RequestHandler);
 router.post('/send-otp', sendOtp as RequestHandler);
 router.post('/verified-otp', verifiedOtp as RequestHandler);
 
-router.post('/user-login', useSignIn as RequestHandler); //////if user is exist then login otherwise registor then login .
-// router.post('/user-details:/user-id', verifiedOtp as RequestHandler);
-// router.post('/delete-user', verifiedOtp as RequestHandler);
+////////////////////////// User Auth Routes ///////////////////////
+router.post('/user-login', useSignIn as RequestHandler);
+router.post('/user-details', verifyToken , getUserDetailsById as RequestHandler);
+router.get('/host-list-for-user', verifyToken , hostListForUser as RequestHandler);
 
-
-
-
+/////////////////////////////// admin auth routes ///////////////////////
+router.post('/host-list-for-admin' , hostListForAdmin as RequestHandler);
+router.post('/host-details-by-id-for-admin' , getAdminDetailsById as RequestHandler);
 
 export default router;

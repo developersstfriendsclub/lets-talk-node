@@ -8,14 +8,14 @@ import Image from '../models/image.model';
 import axios from 'axios';
 
 // Helper functions for masking
-function maskEmail(email: string): string {
+export const maskEmail = (email: string): string => {
   if (!email) return '';
   const [user, domain] = email.split('@');
   if (user.length <= 5) return '*'.repeat(user.length) + '@' + domain;
   return '*'.repeat(5) + user.slice(5) + '@' + domain;
-}
+};
 
-function maskPhone(phone: string): string {
+export const maskPhone = (phone: string): string => {
   if (!phone) return '';
   // Remove non-digits for masking, but keep original format
   const digits = phone.replace(/\D/g, '');
@@ -23,7 +23,7 @@ function maskPhone(phone: string): string {
   return digits.slice(0, digits.length - 4) + '****';
 }
 
-function maskName(name: string): string {
+export const maskName = (name: string): string => {
   if (!name) return '';
   if (name.length <= 2) return name[0] + '*';
   return name[0] + '*'.repeat(name.length - 2) + name[name.length - 1];
