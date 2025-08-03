@@ -2,7 +2,7 @@ import express, { RequestHandler } from 'express';
 import { signUp, signIn, forgotPassword, generateVideoCallToken  , getHostDetails, updateUser, getUserById, sendOtp, verifiedOtp } from '../controllers/auth.controller';
 import { verifyToken } from '../middleware/auth.middleware';
 import { signUpValidation, signInValidation, validateRequestSchema, updateUserValidation } from '../validators/auth.validator';
-import { getAdminDetailsById, getUserDetailsById, hostListForAdmin, hostListForUser, useSignIn } from '../controllers/userAuth.controller';
+import { deleteHostThroughAdmin, getAdminDetailsById, getUserDetailsById, hostListForAdmin, hostListForUser, useSignIn } from '../controllers/userAuth.controller';
 
 const router = express.Router();
 
@@ -23,5 +23,6 @@ router.get('/host-list-for-user', verifyToken , hostListForUser as RequestHandle
 /////////////////////////////// admin auth routes ///////////////////////
 router.post('/host-list-for-admin' , hostListForAdmin as RequestHandler);
 router.post('/host-details-by-id-for-admin' , getAdminDetailsById as RequestHandler);
+router.post('/delete-host-through-admin' , deleteHostThroughAdmin as RequestHandler);
 
 export default router;
