@@ -18,4 +18,4 @@ jobs:
           script: |
             cd /root/lets-talk-node
             git pull origin main
-            pm2 restart socket-service
+            pm2 restart dev-service
