@@ -44,9 +44,9 @@ const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {
   await syncDatabase();
-  httpServer.listen(PORT, () => {
-    console.log(`🚀 Server + Socket.IO running on port ${PORT}`);
-  });
+ app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server running on 0.0.0.0:${PORT}`);
+});
 };
 
 startServer();
