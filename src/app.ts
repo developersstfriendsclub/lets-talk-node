@@ -19,7 +19,13 @@ const app = express();
 const httpServer = createServer(app);
 
 // Middleware
-app.use(cors());
+// app.use(cors());
+app.use(cors({
+  origin: '*', // or your frontend origin: 'https://friendsclub.clientfriendclub.com'
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
 app.use(express.json({ limit: '1024mb' }));
 app.use(express.urlencoded({ limit: '1024mb', extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
