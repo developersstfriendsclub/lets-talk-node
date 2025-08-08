@@ -7,6 +7,7 @@ import fs from 'fs';
 import Image from '../models/image.model';
 import { sendSuccess, sendError, sendNotFound, sendValidationError } from '../utils/response';
 import { User } from '../models/user.model';
+import { generateFileUrl } from '../config/app';
 
 // Configure multer for file upload
 const storage = multer.diskStorage({
@@ -105,7 +106,7 @@ export const createSingleImage = async (req: Request, res: Response): Promise<vo
       fs.mkdirSync(uploadDir, { recursive: true });
     }
 
-    const imageUrl = `${req.protocol}://${req.get('host')}/uploads/images/${file.filename}`;
+    const imageUrl = generateFileUrl(file.filename, 'image');
 
     // Get image dimensions
     const imageInfo = await sharp(imagePath).metadata();
@@ -162,7 +163,7 @@ export const createSingleImageFromBase64 = async (req: Request, res: Response): 
     const imageBuffer = Buffer.from(base64Image, 'base64');
     fs.writeFileSync(imagePath, imageBuffer);
 
-    const imageUrl = `${req.protocol}://${req.get('host')}/uploads/images/${uniqueName}`;
+    const imageUrl = generateFileUrl(uniqueName, 'image');
 
     // Get image dimensions
     const imageInfo = await sharp(imageBuffer).metadata();

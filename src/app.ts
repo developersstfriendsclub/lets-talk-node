@@ -12,6 +12,7 @@ import videoCallRoutes from './routes/videoCall.routes';
 
 import { syncDatabase } from './databaseSync';
 import { initSocketServer } from './socket'; // ✅ import socket logic
+import { appConfig } from './config/app';
 
 dotenv.config();
 
@@ -40,13 +41,14 @@ app.use('/api/v1/video-calls', videoCallRoutes);
 // Initialize socket server
 initSocketServer(httpServer);
 
-const PORT = process.env.PORT || 5000;
+const PORT = appConfig.port;
 
 const startServer = async () => {
   await syncDatabase();
- app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server running on 0.0.0.0:${PORT}`);
-});
+  httpServer.listen(PORT, () => {
+    console.log(`🚀 Server + Socket.IO running on port ${PORT}`);
+    console.log(`📁 File uploads will use base URL: ${appConfig.baseUrl}`);
+  });
 };
 
 startServer();
