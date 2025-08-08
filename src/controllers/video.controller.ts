@@ -5,6 +5,7 @@ import path from 'path';
 import fs from 'fs';
 import Video from '../models/video.model';
 import { sendSuccess, sendError, sendNotFound, sendValidationError } from '../utils/response';
+import { generateFileUrl } from '../config/app';
 
 // Configure multer for video upload
 const storage = multer.diskStorage({
@@ -51,7 +52,7 @@ export const createSingleVideo = async (req: Request, res: Response): Promise<vo
 
     const file = req.file;
     const videoPath = file.path;
-    const videoUrl = `${req.protocol}://${req.get('host')}/uploads/videos/${file.filename}`;
+    const videoUrl = generateFileUrl(file.filename, 'video');
 
     const video = await Video.create({
       userId,
@@ -105,7 +106,7 @@ export const createSingleVideoFromBase64 = async (req: Request, res: Response): 
     const videoBuffer = Buffer.from(base64Video, 'base64');
     fs.writeFileSync(videoPath, videoBuffer);
 
-    const videoUrl = `${req.protocol}://${req.get('host')}/uploads/videos/${uniqueName}`;
+    const videoUrl = generateFileUrl(uniqueName, 'video');
 
     const video = await Video.create({
       userId,
@@ -173,7 +174,7 @@ export const createMultipleVideosFromBase64 = async (req: Request, res: Response
       const videoBuffer = Buffer.from(base64Video, 'base64');
       fs.writeFileSync(videoPath, videoBuffer);
 
-      const videoUrl = `${req.protocol}://${req.get('host')}/uploads/videos/${uniqueName}`;
+      const videoUrl = generateFileUrl(uniqueName, 'video');
 
       const video = await Video.create({
         userId,
