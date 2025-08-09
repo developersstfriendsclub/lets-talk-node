@@ -174,6 +174,11 @@ export const getUserById = async (req: Request, res: Response, next: NextFunctio
 
 export const getHostDetails = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const userId = (req as any).user?.id;
+    if (!userId) {
+      sendUnauthorized(res, 'User not authenticated');
+      return;
+    }
     const users = await User.findAll({
       where:{
         roleId:1
