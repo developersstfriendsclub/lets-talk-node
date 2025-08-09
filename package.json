@@ -8,6 +8,7 @@
     "build": "tsc",
     "start": "node --max-old-space-size=512 --optimize-for-size dist/app.js",
     "start:prod": "node --max-old-space-size=256 --optimize-for-size --no-lazy --no-compilation-cache dist/app.js",
+    "start:minimal": "node --max-old-space-size=128 --optimize-for-size --no-lazy --no-compilation-cache --no-wasm dist/app.js",
     "start:dev": "ts-node src/app.ts"
   },
   "keywords": [],
