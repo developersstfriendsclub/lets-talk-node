@@ -8,7 +8,7 @@ const router = express.Router();
 
 router.post('/sign-up', signUpValidation, validateRequestSchema, signUp as RequestHandler);
 router.post('/sign-in', signInValidation, validateRequestSchema, signIn as RequestHandler);
-router.get('/get-host-details', getHostDetails as RequestHandler);
+router.get('/get-host-details',verifyToken, getHostDetails as RequestHandler);
 router.get('/generate-token', generateVideoCallToken as RequestHandler);
 router.put('/update-profile', verifyToken, updateUserValidation, validateRequestSchema, updateUser as RequestHandler);
 router.get('/show-profile', verifyToken, getUserById as RequestHandler);
