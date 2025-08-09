@@ -146,9 +146,11 @@ export const getUserById = async (req: Request, res: Response, next: NextFunctio
       },
       include: [
         {
-          model: Image,
-          order: [['id', 'DESC']]
+          model: Image
         }
+      ],
+      order: [
+        [Image, 'id', 'DESC']
       ]
     });
     if (!user) {
@@ -185,9 +187,11 @@ export const getHostDetails = async (req: Request, res: Response, next: NextFunc
       },
       include: [
         {
-          model: Image,
-          order: [['id', 'DESC']]
+          model: Image
         }
+      ],
+      order: [
+        [Image, 'id', 'DESC']
       ]
     });
     const maskedUsers =  users.map( user => {
