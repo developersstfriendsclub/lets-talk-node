@@ -175,6 +175,9 @@ export const getUserById = async (req: Request, res: Response, next: NextFunctio
 export const getHostDetails = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const users = await User.findAll({
+      where:{
+        roleId:1
+      },
       include: [
         {
           model: Image,
@@ -182,8 +185,8 @@ export const getHostDetails = async (req: Request, res: Response, next: NextFunc
         }
       ]
     });
-    const maskedUsers = users.map(user => {
-      const userObj = user.toJSON();
+    const maskedUsers =  users.map( user => {
+      const userObj =  user.toJSON();
       return {
         ...userObj,
         email: maskEmail(userObj.email),
