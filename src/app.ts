@@ -45,7 +45,7 @@ const PORT = appConfig.port;
 
 const startServer = async () => {
   await syncDatabase();
-  httpServer.listen(() => {
+  httpServer.listen(PORT, () => {
     console.log(`🚀 Server + Socket.IO running on port ${PORT}`);
     console.log(`📁 File uploads will use base URL: ${appConfig.baseUrl}`);
   });
