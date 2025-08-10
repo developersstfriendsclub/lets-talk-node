@@ -49,6 +49,9 @@ export const signUp = async (req: Request, res: Response, next: NextFunction) =>
       phone: maskPhone(userObj.phone),
       name: maskName(userObj.name)
     };
+
+    const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET || 'default_secret', { expiresIn: '1h' });
+    maskedUser.token = token;
     sendSuccess(res, maskedUser, 'User created successfully', 201);
   } catch (err) {
     // Log the full error object for debugging
@@ -57,6 +60,23 @@ export const signUp = async (req: Request, res: Response, next: NextFunction) =>
   }
 };
 
+
+export const logout = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Since JWT tokens are stateless, we can't invalidate them on the server
+    // The client should remove the token from localStorage
+    // We can log the logout action for audit purposes
+    const userId = (req as any).user?.id;
+    
+    if (userId) {
+      console.log(`User ${userId} logged out`);
+    }
+    
+    sendSuccess(res, {}, 'Logged out successfully');
+  } catch (err) {
+    next(err);
+  }
+};
 
 
 export const signIn = async (req: Request, res: Response, next: NextFunction) => {
@@ -75,7 +95,8 @@ export const signIn = async (req: Request, res: Response, next: NextFunction) =>
       return;
     }
 
-    const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET as string, { expiresIn: '1h' });
+    // Generate JWT token
+    const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET || 'default_secret', { expiresIn: '1h' });
     sendSuccess(res, { token }, 'Login successful');
   } catch (err) {
     next(err);
@@ -192,7 +213,7 @@ export const getHostDetails = async (req: Request, res: Response, next: NextFunc
           where: {
             image_type: 'profile_photo'
           },
-          // required: false // Make it LEFT JOIN so users without images are still returned
+          required: false // Make it LEFT JOIN so users without images are still returned
         }
       ],
       order: [
