@@ -9,6 +9,7 @@ import imageRoutes from './routes/image.routes';
 import videoRoutes from './routes/video.routes';
 import bankAccountRoutes from './routes/bankAccount.routes';
 import videoCallRoutes from './routes/videoCall.routes';
+import interestsRoutes from './routes/interests.routes';
 
 import { syncDatabase } from './databaseSync';
 import { initSocketServer } from './socket'; // ✅ import socket logic
@@ -37,6 +38,7 @@ app.use('/api/v1/images', imageRoutes);
 app.use('/api/v1/videos', videoRoutes);
 app.use('/api/v1/bank-accounts', bankAccountRoutes);
 app.use('/api/v1/video-calls', videoCallRoutes);
+app.use('/api/v1/interests', interestsRoutes);
 
 // Initialize socket server
 initSocketServer(httpServer);

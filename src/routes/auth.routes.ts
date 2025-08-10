@@ -1,5 +1,5 @@
 import express, { RequestHandler } from 'express';
-import { signUp, signIn, forgotPassword, generateVideoCallToken  , getHostDetails, updateUser, getUserById, sendOtp, verifiedOtp } from '../controllers/auth.controller';
+import { signUp, signIn, forgotPassword, generateVideoCallToken  , getHostDetails, updateUser, getUserById, sendOtp, verifiedOtp, logout } from '../controllers/auth.controller';
 import { verifyToken } from '../middleware/auth.middleware';
 import { signUpValidation, signInValidation, validateRequestSchema, updateUserValidation } from '../validators/auth.validator';
 import { deleteHostThroughAdmin, getAdminDetailsById, getUserDetailsById, hostListForAdmin, hostListForUser, useSignIn } from '../controllers/userAuth.controller';
@@ -8,6 +8,7 @@ const router = express.Router();
 
 router.post('/sign-up', signUpValidation, validateRequestSchema, signUp as RequestHandler);
 router.post('/sign-in', signInValidation, validateRequestSchema, signIn as RequestHandler);
+router.post('/logout', logout as RequestHandler);
 router.get('/get-host-details',verifyToken, getHostDetails as RequestHandler);
 router.get('/generate-token', generateVideoCallToken as RequestHandler);
 router.put('/update-profile', verifyToken, updateUserValidation, validateRequestSchema, updateUser as RequestHandler);
