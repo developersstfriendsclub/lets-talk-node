@@ -111,6 +111,42 @@ export const createSingleImage = async (req: Request, res: Response): Promise<vo
     // Get image dimensions
     const imageInfo = await sharp(imagePath).metadata();
 
+    // Check if this is a profile photo and if one already exists
+    if (image_type === 'profile_photo') {
+      const existingProfilePhoto = await Image.findOne({
+        where: {
+          userId,
+          image_type: 'profile_photo'
+        }
+      });
+
+      if (existingProfilePhoto) {
+        // Delete old profile photo file from filesystem
+        if (fs.existsSync(existingProfilePhoto.path)) {
+          fs.unlinkSync(existingProfilePhoto.path);
+        }
+
+        // Update existing profile photo record
+        await existingProfilePhoto.update({
+          title: title?.trim() || null,
+          description: description?.trim() || null,
+          filename: file.filename,
+          originalName: file.originalname,
+          mimeType: file.mimetype,
+          size: file.size,
+          path: imagePath,
+          url: imageUrl,
+          width: imageInfo.width || 0,
+          height: imageInfo.height || 0,
+          isPublic: isPublic === 'true' || isPublic === true || false,
+        });
+
+        sendSuccess(res, existingProfilePhoto, 'Profile photo updated successfully');
+        return;
+      }
+    }
+
+    // Create new image (either non-profile photo or first profile photo)
     const image = await Image.create({
       userId,
       title: title?.trim() || null,
@@ -168,6 +204,42 @@ export const createSingleImageFromBase64 = async (req: Request, res: Response): 
     // Get image dimensions
     const imageInfo = await sharp(imageBuffer).metadata();
 
+    // Check if this is a profile photo and if one already exists
+    if (image_type === 'profile_photo') {
+      const existingProfilePhoto = await Image.findOne({
+        where: {
+          userId,
+          image_type: 'profile_photo'
+        }
+      });
+
+      if (existingProfilePhoto) {
+        // Delete old profile photo file from filesystem
+        if (fs.existsSync(existingProfilePhoto.path)) {
+          fs.unlinkSync(existingProfilePhoto.path);
+        }
+
+        // Update existing profile photo record
+        await existingProfilePhoto.update({
+          title: title?.trim() || null,
+          description: description?.trim() || null,
+          filename: uniqueName,
+          originalName: fileName || 'base64-image.jpg',
+          mimeType: mimeType || 'image/jpeg',
+          size: imageBuffer.length,
+          path: imagePath,
+          url: imageUrl,
+          width: imageInfo.width || 0,
+          height: imageInfo.height || 0,
+          isPublic: isPublic || false,
+        });
+
+        sendSuccess(res, existingProfilePhoto, 'Profile photo updated successfully');
+        return;
+      }
+    }
+
+    // Create new image (either non-profile photo or first profile photo)
     const image = await Image.create({
       userId,
       title,
@@ -263,6 +335,10 @@ export const getImageByTypeWise = async (req: Request, res: Response): Promise<v
       sendNotFound(res, 'image type is required !!');
     }
 
+    if (!userId) {
+      sendNotFound(res, 'User not found !!');
+    }
+
     const image = await Image.findAll({
       where: {
         image_type: image_type_value,
@@ -276,7 +352,7 @@ export const getImageByTypeWise = async (req: Request, res: Response): Promise<v
       order: [['id', 'DESC']],
     });
 
-    if (image.length == 0) {
+    if (!image) {
       sendNotFound(res, 'Image not found');
       return;
     }

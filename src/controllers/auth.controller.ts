@@ -181,28 +181,41 @@ export const getHostDetails = async (req: Request, res: Response, next: NextFunc
       sendUnauthorized(res, 'User not authenticated');
       return;
     }
+    
     const users = await User.findAll({
-      where:{
-        roleId:1
+      where: {
+        roleId: 1
       },
       include: [
         {
-          model: Image
+          model: Image,
+          where: {
+            image_type: 'profile_photo'
+          },
+          // required: false // Make it LEFT JOIN so users without images are still returned
         }
       ],
       order: [
-        [Image, 'id', 'DESC']
+        ['id', 'DESC']
       ]
     });
-    const maskedUsers =  users.map( user => {
-      const userObj =  user.toJSON();
+
+    const maskedUsers = users.map(user => {
+      const userObj = user.toJSON();
+      
+      // Extract the profile photo from Images array
+      const profilePhoto = userObj.Images && userObj.Images.length > 0 ? userObj.Images[0] : null;
+      
       return {
         ...userObj,
         email: maskEmail(userObj.email),
         phone: maskPhone(userObj.phone),
-        name: maskName(userObj.name)
+        name: maskName(userObj.name),
+        image: profilePhoto, // Set the image field to the profile photo
+        
       };
     });
+
     sendSuccess(res, maskedUsers, 'Host details retrieved successfully');
   } catch (err) {
     next(err);
