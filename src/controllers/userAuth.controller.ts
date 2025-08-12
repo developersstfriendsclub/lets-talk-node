@@ -8,6 +8,7 @@ import { Op } from 'sequelize';
 import { Role } from '../models/role.model';
 import { maskEmail, maskPhone } from './auth.controller';
 import Image from '../models/image.model';
+import Video from '../models/video.model';
 
 // === Zod schemas ===
 const signInSchema = z.object({
@@ -147,7 +148,10 @@ export const getAdminDetailsById = async (req: Request, res: Response, next: Nex
       },
       include: [
         {
-          model: Role,
+          model: Image,
+        },
+        {
+          model: Video,
         },
         {
           model: Role,
