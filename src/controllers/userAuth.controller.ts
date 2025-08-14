@@ -41,11 +41,14 @@ export const useSignIn = async (req: Request, res: Response, next: NextFunction)
     }
 
     // Generate JWT token
-    const token = jwt.sign(
-      { userId: user },
-      process.env.JWT_SECRET || 'default_secret',
-      { expiresIn: '7d' }
-    );
+    // const token = jwt.sign(
+    //   { userId: user },
+    //   process.env.JWT_SECRET || 'default_secret',
+    //   { expiresIn: '7d' }
+    // );
+
+        const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET || 'default_secret', { expiresIn: '7d' });
+
 
     // return res.status(200).json({
     //   message: 'Login successful',
