@@ -280,3 +280,26 @@ export const rejectHostThroughAdmin = async (req: Request, res: Response, next: 
   }
 };
 
+export const userListForHost = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const users = await User.findAll({
+      where: { roleId: { [Op.is]: null } },
+      include: [{ model: Image }],
+      order: [[Image, 'id', 'DESC']]
+    });
+
+    const maskedUsers = users.map((u) => {
+      const obj = u.toJSON() as any;
+      return {
+        ...obj,
+        email: obj.email ? maskEmail(obj.email) : null,
+        phone: obj.phone ? maskPhone(obj.phone) : null,
+      };
+    });
+
+    sendSuccess(res, maskedUsers, 'User list for host retrieved successfully');
+  } catch (err) {
+    next(err);
+  }
+};
+
