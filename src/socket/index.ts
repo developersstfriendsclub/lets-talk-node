@@ -6,6 +6,7 @@ import { registerSocketHandlers } from './handlers';
 export const initSocketServer = (server: HTTPServer) => {
   const io = new SocketIOServer(server, {
     cors: {
+      //origin: ["http://localhost:5000", "https://*.postman.com"], // for testing purpose.
       origin: "*",
       methods: ["GET", "POST"]
     }
