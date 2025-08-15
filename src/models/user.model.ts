@@ -5,6 +5,9 @@ export class User extends Model {
   public id!: number;
   public email!: string;
   public password!: string;
+  public is_verified!: boolean;
+  public approval_status!: 'pending' | 'approved' | 'rejected';
+  public is_premium!: boolean;
 }
 
 User.init({
@@ -36,6 +39,16 @@ User.init({
           type: DataTypes.BOOLEAN,
           allowNull: false,
           defaultValue: false,
+        },
+        is_premium: {
+          type: DataTypes.BOOLEAN,
+          allowNull: false,
+          defaultValue: false,
+        },
+        approval_status: {
+          type: DataTypes.ENUM('pending', 'approved', 'rejected'),
+          allowNull: false,
+          defaultValue: 'pending',
         },
   
         name: {

@@ -31,7 +31,7 @@ export const maskName = (name: string): string => {
 
 export const signUp = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { email, password, name, gender, phone, dob } = req.body;
+    const { email, password, name, gender, phone, dob, is_premium } = req.body;
     // Check for duplicate email
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
@@ -39,7 +39,7 @@ export const signUp = async (req: Request, res: Response, next: NextFunction) =>
     }
     const hashed = await bcrypt.hash(password, 10);
     const user = await User.create(
-      { email, password: hashed, name, gender, phone, dob , roleId: 1 }
+      { email, password: hashed, name, gender, phone, dob , roleId: 1, is_premium: Boolean(is_premium) }
     );
     // Mask sensitive fields in response
     const userObj = user.toJSON();

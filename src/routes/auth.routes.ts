@@ -2,7 +2,7 @@ import express, { RequestHandler } from 'express';
 import { signUp, signIn, forgotPassword, generateVideoCallToken  , getHostDetails, updateUser, getUserById, sendOtp, verifiedOtp, logout, googleSignIn } from '../controllers/auth.controller';
 import { verifyToken } from '../middleware/auth.middleware';
 import { signUpValidation, signInValidation, validateRequestSchema, updateUserValidation } from '../validators/auth.validator';
-import { deleteHostThroughAdmin, getAdminDetailsById, getUserDetailsById, hostListForAdmin, hostListForUser, useSignIn } from '../controllers/userAuth.controller';
+import { deleteHostThroughAdmin, getAdminDetailsById, getUserDetailsById, hostListForAdmin, hostListForUser, useSignIn, approveHostThroughAdmin, rejectHostThroughAdmin } from '../controllers/userAuth.controller';
 
 const router = express.Router();
 
@@ -26,5 +26,7 @@ router.get('/host-list-for-user', verifyToken , hostListForUser as RequestHandle
 router.post('/host-list-for-admin' , hostListForAdmin as RequestHandler);
 router.post('/host-details-by-id-for-admin' , getAdminDetailsById as RequestHandler);
 router.post('/delete-host-through-admin' , deleteHostThroughAdmin as RequestHandler);
+router.post('/approve-host-through-admin' , approveHostThroughAdmin as RequestHandler);
+router.post('/reject-host-through-admin' , rejectHostThroughAdmin as RequestHandler);
 
 export default router;
