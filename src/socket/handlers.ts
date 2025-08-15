@@ -1,12 +1,12 @@
 // src/sockets/handlers.ts
 import { Server, Socket } from 'socket.io';
 
+/*
 interface User {
   socketId: string;
   userName: string;
   userId?: string;
 }
-
 const users = new Map<string, User>();
 const socketToUser = new Map<string, string>();
 
@@ -130,5 +130,108 @@ export const registerSocketHandlers = (io: Server, socket: Socket) => {
       socketToUser.delete(socket.id);
       broadcastUserList(io);
     }
+  });
+}; */
+
+
+// My logic of video call plus chat app -
+/**
+ * I will implement offer and answer for remote and local connection
+ * shares ice-candidates
+ * disconnect
+ * Chat (either using map or convetional array)
+ * Todos: -
+ * Timely disconnects the call when the time is fineshed
+ * Dynamic roomId, time and so fourth.
+ */
+
+interface OfferPayload {
+  roomId: string;
+  offer: RTCSessionDescriptionInit;
+}
+
+interface AnswerPayload {
+  roomId: string;
+  answer: any; // will use RTCSessionDescriptionInit type
+}
+
+interface IcecandidatePayload {
+  roomId: string;
+  candidate: any; // RTCIceCandidateInit type
+}
+
+export const registerSocketHandlers = (io: Server, socket: Socket) => {
+
+  // user joined a room
+  socket.on('join-room', (roomId: string) => {
+    const roomSize = io.sockets.adapter.rooms.get(roomId)?.size || 0;
+    if (roomSize >= 2) {
+      return socket.emit('room-full', {
+        message: "Room has already 2 persons"
+      });
+    }
+
+    console.log(`Socket ${socket.id} is joining room ${roomId}`);
+    // join specified room
+    socket.join(roomId);
+
+    socket.to(roomId).emit('user-joined', socket.id);
+
+  });
+
+  // relay an offer to a specific room
+  socket.on('offer', (payload: OfferPayload) => {
+    try {
+      if (!payload.roomId || !payload.offer) {
+        throw new Error('Invalid payload or roommId');
+      }
+
+      console.log(`Relaying offer from ${socket.id} to room ${payload.roomId}`);
+
+      // send offer
+      socket.to(payload.roomId).emit('offer', {
+        offer: payload.offer,
+        fromSocketId: socket.id
+      });
+
+    } catch (error) {
+      socket.emit('error', {
+        message: (error as Error).message || "error from offer"
+      });
+
+    }
+  });
+
+  // relay an answer to back to the specifi room
+  socket.on('answer', (payload: AnswerPayload) => {
+    console.log(`Relaying answer from ${socket.id} to room ${payload.roomId}`);
+
+    // send answer
+    socket.to(payload.roomId).emit('answer', {
+      answer: payload.answer,
+      fromSocketId: socket.id
+    });
+  });
+
+
+  //  Relay ICE Candidates
+  socket.on('ice-candidate', (payload: IcecandidatePayload) => {
+
+    // Send the ICE candidates
+    socket.to(payload.roomId).emit('ice-candidate', {
+      candidate: payload.candidate,
+      fromSocketId: socket.id
+    });
+  });
+
+  // Handle user disconnection
+  socket.on('disconnect', () => {
+    console.log(`Socket ${socket.id} disconnected`);
+
+    socket.rooms.forEach(room => {
+      if (room !== socket.id) { // Exclude default room
+        socket.to(room).emit('user-left', socket.id);
+      }
+    });
   });
 };
