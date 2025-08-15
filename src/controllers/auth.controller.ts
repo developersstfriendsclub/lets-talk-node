@@ -103,6 +103,67 @@ export const signIn = async (req: Request, res: Response, next: NextFunction) =>
   }
 };
 
+// Google Sign-In using Google ID token verification (no extra library required)
+export const googleSignIn = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { idToken } = req.body as { idToken?: string };
+    if (!idToken) {
+      sendValidationError(res, 'Google idToken is required');
+      return;
+    }
+
+    // Verify the token via Google Token Info endpoint
+    // Response doc: https://developers.google.com/identity/openid-connect/openid-connect#obtainuserinfo
+    const verifyResponse = await axios.get('https://oauth2.googleapis.com/tokeninfo', {
+      params: { id_token: idToken },
+    });
+
+    const {
+      email,
+      email_verified,
+      name,
+      picture,
+      sub,
+    } = verifyResponse.data as {
+      email?: string;
+      email_verified?: string | boolean;
+      name?: string;
+      picture?: string;
+      sub?: string; // Google user ID
+    };
+
+    if (!email) {
+      sendUnauthorized(res, 'Unable to verify Google account');
+      return;
+    }
+
+    // Treat various truthy representations as verified
+    const isEmailVerified = String(email_verified).toLowerCase() === 'true' || email_verified === true;
+
+    let user = await User.findOne({ where: { email } });
+    if (!user) {
+      const fallbackPassword = sub ? await bcrypt.hash(sub, 10) : await bcrypt.hash(Math.random().toString(36), 10);
+      user = await User.create({
+        email,
+        password: fallbackPassword,
+        name: name || email.split('@')[0],
+        image: picture,
+        is_verified: isEmailVerified,
+      } as any);
+    }
+
+    const token = jwt.sign({ id: (user as any).id, email: (user as any).email }, process.env.JWT_SECRET || 'default_secret', { expiresIn: '7d' });
+    sendSuccess(res, { user, token }, 'Login successful');
+  } catch (err: any) {
+    // If Google returns 400 for invalid token
+    if (err?.response?.status === 400) {
+      sendUnauthorized(res, 'Invalid Google token');
+      return;
+    }
+    next(err);
+  }
+};
+
 export const generateVideoCallToken = async (req: Request, res: Response, next: NextFunction) => {
   const channelName = req.query.channelName as string;
   const uid = parseInt(req.query.uid as string) || 0;
