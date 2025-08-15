@@ -220,3 +220,63 @@ export const deleteHostThroughAdmin = async (req: Request, res: Response, next: 
 };
 
 
+export const approveHostThroughAdmin = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { user_id } = z
+      .object({
+        user_id: z.coerce.number({
+          required_error: 'user_id is required',
+          invalid_type_error: 'user_id must be a number',
+        }),
+      })
+      .parse(req.body);
+
+    const user = await User.findByPk(user_id);
+    if (!user) {
+      return sendUnauthorized(res, 'User not found');
+    }
+
+    user.is_verified = true as any;
+    (user as any).approval_status = 'approved';
+    await user.save();
+
+    sendSuccess(res, user, 'Host approved successfully');
+  } catch (err: any) {
+    if (err instanceof z.ZodError) {
+      return res.status(400).json({ message: 'Validation failed', errors: err.errors });
+    }
+    console.error('Approve Host error:', err);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const rejectHostThroughAdmin = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { user_id } = z
+      .object({
+        user_id: z.coerce.number({
+          required_error: 'user_id is required',
+          invalid_type_error: 'user_id must be a number',
+        }),
+      })
+      .parse(req.body);
+
+    const user = await User.findByPk(user_id);
+    if (!user) {
+      return sendUnauthorized(res, 'User not found');
+    }
+
+    user.is_verified = false as any;
+    (user as any).approval_status = 'rejected';
+    await user.save();
+
+    sendSuccess(res, user, 'Host rejected successfully');
+  } catch (err: any) {
+    if (err instanceof z.ZodError) {
+      return res.status(400).json({ message: 'Validation failed', errors: err.errors });
+    }
+    console.error('Reject Host error:', err);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
