@@ -145,6 +145,17 @@ export const registerSocketHandlers = (io: Server, socket: Socket) => {
  * Dynamic roomId, time and so fourth.
  */
 
+interface RoomData {
+  participants: string[];
+  createdAt: number;
+}
+
+const rooms = new Map<string, RoomData>();
+
+interface JoinRoomPayload {
+  roomId: string;
+}
+
 interface OfferPayload {
   roomId: string;
   offer: RTCSessionDescriptionInit;
@@ -152,86 +163,370 @@ interface OfferPayload {
 
 interface AnswerPayload {
   roomId: string;
-  answer: any; // will use RTCSessionDescriptionInit type
+  answer: RTCSessionDescriptionInit;
 }
 
 interface IcecandidatePayload {
   roomId: string;
-  candidate: any; // RTCIceCandidateInit type
+  candidate: RTCIceCandidateInit;
+}
+
+interface ChatMessagePayload {
+  roomId: string;
+  message: string;
+  senderId: string;
+}
+
+// Universal payload parser -- This will parse the payload sting to JSON when need
+function parsePayload<T>(payload: string | T, eventName: string): T {
+
+  if (typeof payload === 'string') {
+
+    try {
+      return JSON.parse(payload) as T;
+
+    } catch {
+      throw new Error(`Invalid JSON string for ${eventName} payload`);
+    }
+  }
+
+  return payload as T;
 }
 
 export const registerSocketHandlers = (io: Server, socket: Socket) => {
 
-  // user joined a room
-  socket.on('join-room', (roomId: string) => {
-    const roomSize = io.sockets.adapter.rooms.get(roomId)?.size || 0;
-    if (roomSize >= 2) {
-      return socket.emit('room-full', {
-        message: "Room has already 2 persons"
-      });
-    }
+  // JOIN ROOM
+  socket.on('join-room', (data: string | JoinRoomPayload) => {
 
-    console.log(`Socket ${socket.id} is joining room ${roomId}`);
-    // join specified room
-    socket.join(roomId);
-
-    socket.to(roomId).emit('user-joined', socket.id);
-
-  });
-
-  // relay an offer to a specific room
-  socket.on('offer', (payload: OfferPayload) => {
     try {
-      if (!payload.roomId || !payload.offer) {
-        throw new Error('Invalid payload or roommId');
+
+      const payload = parsePayload<JoinRoomPayload>(data, 'join-room');
+
+      const roomId = payload.roomId;
+
+      if (!roomId || typeof roomId !== 'string') {
+        throw new Error('Valid Room ID is required');
       }
 
-      console.log(`Relaying offer from ${socket.id} to room ${payload.roomId}`);
+      console.log(`Attempting to join room "${roomId}" from socket ${socket.id}`);
 
-      // send offer
-      socket.to(payload.roomId).emit('offer', {
-        offer: payload.offer,
-        fromSocketId: socket.id
+      const room = io.sockets.adapter.rooms.get(roomId);
+      const roomSize = room ? room.size : 0;
+
+      if (roomSize >= 2) {
+        console.log(`Room "${roomId}" is full, rejecting socket ${socket.id}`);
+        return socket.emit('room-full', { message: 'Room has already 2 persons' });
+      }
+
+      if (!rooms.has(roomId)) {
+        rooms.set(roomId, { participants: [], createdAt: Date.now() });
+      }
+
+      socket.join(roomId);
+
+      const roomData = rooms.get(roomId)!;
+
+      if (!roomData.participants.includes(socket.id)) {
+        roomData.participants.push(socket.id);
+      }
+
+      console.log(`Socket ${socket.id} successfully joined room "${roomId}", new size: ${io.sockets.adapter.rooms.get(roomId)?.size || 0}`);
+
+      socket.to(roomId).emit('user-joined', {
+        socketId: socket.id,
+        roomId: roomId,
+        timestamp: Date.now()
+      });
+
+      socket.emit('room-joined', {
+        roomId,
+        socketId: socket.id,
+        participantCount: roomSize + 1,
+        timestamp: Date.now()
       });
 
     } catch (error) {
-      socket.emit('error', {
-        message: (error as Error).message || "error from offer"
-      });
+      console.error('Error in join-room:', error);
 
+      socket.emit('error', {
+        event: 'join-room',
+        message: (error as Error).message || 'Error joining room'
+
+      });
     }
   });
 
-  // relay an answer to back to the specifi room
-  socket.on('answer', (payload: AnswerPayload) => {
-    console.log(`Relaying answer from ${socket.id} to room ${payload.roomId}`);
+  // OFFER 
+  socket.on('offer', (data: OfferPayload | string) => {
 
-    // send answer
-    socket.to(payload.roomId).emit('answer', {
-      answer: payload.answer,
-      fromSocketId: socket.id
-    });
+    try {
+
+      const payload = parsePayload<OfferPayload>(data, 'offer');
+
+      if (!payload.roomId || !payload.offer) {
+        throw new Error('roomId and offer are required');
+      }
+
+      if (!socket.rooms.has(payload.roomId)) {
+        throw new Error('You are not in this room');
+      }
+
+      console.log(`Relaying OFFER from ${socket.id} to room "${payload.roomId}"`);
+
+      socket.to(payload.roomId).emit('offer', {
+        offer: payload.offer,
+        fromSocketId: socket.id,
+        roomId: payload.roomId,
+        timestamp: Date.now()
+      });
+
+      socket.emit('offer-sent', {
+        roomId: payload.roomId,
+        timestamp: Date.now()
+      });
+
+    } catch (error) {
+
+      console.error('Error in offer:', error);
+      socket.emit('error', {
+        event: 'offer',
+        message: (error as Error).message || "Error processing offer"
+      });
+    }
+
   });
 
+  // ANSWER
+  socket.on('answer', (data: AnswerPayload | string) => {
 
-  //  Relay ICE Candidates
-  socket.on('ice-candidate', (payload: IcecandidatePayload) => {
+    try {
 
-    // Send the ICE candidates
-    socket.to(payload.roomId).emit('ice-candidate', {
-      candidate: payload.candidate,
-      fromSocketId: socket.id
-    });
+      const payload = parsePayload<AnswerPayload>(data, 'answer');
+
+      if (!payload.roomId || !payload.answer) {
+        throw new Error('roomId and answer are required');
+      }
+
+      if (!socket.rooms.has(payload.roomId)) {
+        throw new Error('You are not in this room');
+      }
+
+      console.log(`Relaying ANSWER from ${socket.id} to room "${payload.roomId}"`);
+
+      socket.to(payload.roomId).emit('answer', {
+        answer: payload.answer,
+        fromSocketId: socket.id,
+        roomId: payload.roomId,
+        timestamp: Date.now()
+      });
+
+      socket.emit('answer-sent', {
+        roomId: payload.roomId,
+        timestamp: Date.now()
+      });
+
+    } catch (error) {
+
+      console.error('Error in answer:', error);
+      socket.emit('error', {
+        event: 'answer',
+        message: (error as Error).message || 'Error processing answer'
+      });
+    }
   });
 
-  // Handle user disconnection
+  // ICE CANDIDATE
+  socket.on('ice-candidate', (data: IcecandidatePayload | string) => {
+
+    try {
+
+      const payload = parsePayload<IcecandidatePayload>(data, 'ice-candidate');
+
+      // console.log("DEBUG raw ice-candidate payload:", data, typeof data);
+
+      if (!payload.roomId || !payload.candidate) {
+        throw new Error('roomId and candidate are required');
+      }
+
+      if (!socket.rooms.has(payload.roomId)) {
+        throw new Error('You are not in this room');
+      }
+
+      console.log(`Relaying ICE candidate from ${socket.id} to room "${payload.roomId}"`);
+
+      socket.to(payload.roomId).emit('ice-candidate', {
+        candidate: payload.candidate,
+        fromSocketId: socket.id,
+        roomId: payload.roomId,
+        timestamp: Date.now()
+      });
+
+      socket.emit('ice-candidate-sent', {
+        roomId: payload.roomId,
+        timestamp: Date.now()
+      });
+
+    } catch (error) {
+      console.error('Error in ICE candidate:', error);
+      socket.emit('error', {
+        event: 'ice-candidate',
+        message: (error as Error).message || 'Error processing ICE candidate'
+      });
+    }
+  });
+
+  // CHAT MESSAGE
+  socket.on('chat-message', (data: string | ChatMessagePayload) => {
+    try {
+
+      let payload: ChatMessagePayload;
+
+      if (typeof data === 'string') {
+
+        const userRooms = Array.from(socket.rooms).filter(room => room !== socket.id);
+
+        if (userRooms.length === 0) {
+          throw new Error('Socket not in any room');
+        }
+
+        payload = {
+          message: data,
+          senderId: socket.id,
+          roomId: userRooms[0]
+        };
+
+      } else {
+
+        payload = parsePayload<ChatMessagePayload>(data, 'chat-message');
+        payload.senderId = payload.senderId || socket.id;
+
+      }
+
+      if (!payload.roomId || !payload.message) {
+        throw new Error('Room ID and message are required');
+      }
+
+      if (!socket.rooms.has(payload.roomId)) {
+        throw new Error('You are not in this room');
+      }
+
+      console.log(`Chat message from ${payload.senderId} in room "${payload.roomId}": "${payload.message}"`);
+
+      socket.to(payload.roomId).emit('chat-message', {
+        message: payload.message,
+        senderId: payload.senderId,
+        roomId: payload.roomId,
+        timestamp: Date.now()
+      });
+
+      socket.emit('message-sent', {
+        message: payload.message,
+        roomId: payload.roomId,
+        timestamp: Date.now()
+      });
+
+    } catch (error) {
+
+      console.error('Error in chat-message:', error);
+      socket.emit('error', {
+        event: 'chat-message',
+        message: (error as Error).message || 'Error sending chat message'
+      });
+    }
+  });
+
+  // DISCONNECT
   socket.on('disconnect', () => {
-    console.log(`Socket ${socket.id} disconnected`);
 
-    socket.rooms.forEach(room => {
-      if (room !== socket.id) { // Exclude default room
-        socket.to(room).emit('user-left', socket.id);
+    console.log(`socket ${socket.id} disconnected`);
+
+    socket.rooms.forEach((room) => {
+
+      if (room !== socket.id) {
+
+        const roomData = rooms.get(room);
+
+        if (roomData) {
+
+          roomData.participants = roomData.participants.filter(id => id !== socket.id);
+
+          if (roomData.participants.length === 0) {
+            rooms.delete(room);
+            console.log(`Room "${room}" deleted as it is empty`);
+          }
+        }
+
+        socket.to(room).emit('user-left', {
+          socketId: socket.id,
+          roomId: room,
+          timestamp: Date.now()
+        });
       }
     });
   });
+
+
+  /*
+   // --> This two points are only ment for testing in postman that I've created for my ease
+
+    // ---------- DEBUG ----------
+    socket.on('debug-rooms', () => {
+      const userRooms = Array.from(socket.rooms).filter(room => room !== socket.id);
+      console.log(`🔍 Socket ${socket.id} is in rooms:`, userRooms);
+  
+      const roomDetails = userRooms.map(roomId => {
+        const roomData = rooms.get(roomId);
+        const socketRoom = io.sockets.adapter.rooms.get(roomId);
+        return {
+          roomId,
+          participantsInMap: roomData?.participants || [],
+          socketsInRoom: socketRoom ? Array.from(socketRoom) : [],
+          createdAt: roomData?.createdAt
+        };
+      });
+  
+      socket.emit('debug-rooms-response', {
+        socketId: socket.id,
+        rooms: roomDetails,
+        timestamp: Date.now()
+      });
+    });
+  
+    // ---------- TEST WEBRTC ----------
+    socket.on('test-webrtc', () => {
+      const userRooms = Array.from(socket.rooms).filter(room => room !== socket.id);
+      if (userRooms.length === 0) {
+        return socket.emit('test-result', {
+          success: false,
+          message: 'Not in any room. Join a room first.'
+        });
+      }
+  
+      const roomId = userRooms[0];
+      socket.emit('test-result', {
+        success: true,
+        message: 'WebRTC test endpoints ready',
+        testData: {
+          roomId,
+          socketId: socket.id,
+          sampleOffer: {
+            roomId,
+            offer: { type: 'offer', sdp: 'test-sdp-offer-data' }
+          },
+          sampleAnswer: {
+            roomId,
+            answer: { type: 'answer', sdp: 'test-sdp-answer-data' }
+          },
+          sampleIceCandidate: {
+            roomId,
+            candidate: {
+              candidate: 'test-ice-candidate',
+              sdpMid: '0',
+              sdpMLineIndex: 0
+            }
+          }
+        }
+      });
+    });
+    */
 };
