@@ -9,6 +9,7 @@ import { Role } from '../models/role.model';
 import { maskEmail, maskPhone } from './auth.controller';
 import Image from '../models/image.model';
 import Video from '../models/video.model';
+import Call from '../models/call.model';
 
 // === Zod schemas ===
 const signInSchema = z.object({
@@ -301,5 +302,27 @@ export const userListForHost = async (req: Request, res: Response, next: NextFun
   } catch (err) {
     next(err);
   }
+};
+
+export const createCallLog = async (req: Request, res: Response) => {
+  try {
+    const { callerId, calleeId, roomName, startedAt } = req.body;
+    const call = await Call.create({ callerId, calleeId, roomName, startedAt: startedAt ? new Date(startedAt) : new Date(), status: 'ringing' });
+    sendSuccess(res, call, 'Call created');
+  } catch (e) { res.status(500).json({ success:false, message:'Failed to create call' }); }
+};
+
+export const updateCallStatus = async (req: Request, res: Response) => {
+  try {
+    const { id, status, answeredAt, endedAt, durationSeconds } = req.body;
+    const call = await Call.findByPk(id);
+    if (!call) return sendUnauthorized(res, 'Call not found');
+    if (status) (call as any).status = status;
+    if (answeredAt) (call as any).answeredAt = new Date(answeredAt);
+    if (endedAt) (call as any).endedAt = new Date(endedAt);
+    if (typeof durationSeconds === 'number') (call as any).durationSeconds = durationSeconds;
+    await call.save();
+    sendSuccess(res, call, 'Call updated');
+  } catch (e) { res.status(500).json({ success:false, message:'Failed to update call' }); }
 };
 

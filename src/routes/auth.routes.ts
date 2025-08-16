@@ -2,7 +2,7 @@ import express, { RequestHandler } from 'express';
 import { signUp, signIn, forgotPassword, generateVideoCallToken  , getHostDetails, updateUser, getUserById, sendOtp, verifiedOtp, logout, googleSignIn } from '../controllers/auth.controller';
 import { verifyToken } from '../middleware/auth.middleware';
 import { signUpValidation, signInValidation, validateRequestSchema, updateUserValidation } from '../validators/auth.validator';
-import { deleteHostThroughAdmin, getAdminDetailsById, getUserDetailsById, hostListForAdmin, hostListForUser, useSignIn, approveHostThroughAdmin, rejectHostThroughAdmin, userListForHost } from '../controllers/userAuth.controller';
+import { deleteHostThroughAdmin, getAdminDetailsById, getUserDetailsById, hostListForAdmin, hostListForUser, useSignIn, approveHostThroughAdmin, rejectHostThroughAdmin, userListForHost, createCallLog, updateCallStatus } from '../controllers/userAuth.controller';
 
 const router = express.Router();
 
@@ -22,6 +22,8 @@ router.post('/user-login', useSignIn as RequestHandler);
 router.post('/user-details', verifyToken , getUserDetailsById as RequestHandler);
 router.get('/host-list-for-user', verifyToken , hostListForUser as RequestHandler);
 router.get('/user-list-for-host', verifyToken , userListForHost as RequestHandler);
+router.post('/call/create', createCallLog as RequestHandler);
+router.post('/call/update', updateCallStatus as RequestHandler);
 
 /////////////////////////////// admin auth routes ///////////////////////
 router.post('/host-list-for-admin' , hostListForAdmin as RequestHandler);

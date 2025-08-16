@@ -30,6 +30,7 @@ export const registerSocketHandlers = (io: Server, socket: Socket) => {
       io.to(targetUser.socketId).emit("incoming-call", {
         from,
         fromUserId: fromUser.userId,
+        suggestedRoom: `room_${fromUser.userId || from}`,
       });
       io.to(fromUser.socketId).emit("ringing");
     } else {
