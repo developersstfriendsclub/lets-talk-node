@@ -1,5 +1,6 @@
 // src/sockets/handlers.ts
 import { Server, Socket } from 'socket.io';
+import ChatMessage from '../models/chat.model';
 
 interface User {
   socketId: string;
@@ -138,8 +139,15 @@ export const registerSocketHandlers = (io: Server, socket: Socket) => {
   });
 
   // Room chat
-  socket.on("room-message", ({ roomName, from, message }) => {
-    io.to(roomName).emit("room-message", { from, message, timestamp: Date.now() });
+  socket.on("room-message", async ({ roomName, from, message, senderId }) => {
+    // Send to everyone else in the room except the sender
+    socket.to(roomName).emit("room-message", { from, message, timestamp: Date.now(), senderId });
+    try { await ChatMessage.create({ roomName, senderId: senderId ? Number(senderId) : null, message }); } catch(_){}
+  });
+
+  // Typing indicator (room scope)
+  socket.on("room-typing", ({ roomName, from, isTyping }) => {
+    socket.to(roomName).emit("room-typing", { from, isTyping: Boolean(isTyping) });
   });
 
   // Room reject

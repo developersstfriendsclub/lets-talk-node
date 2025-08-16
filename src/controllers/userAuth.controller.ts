@@ -10,6 +10,8 @@ import { maskEmail, maskPhone } from './auth.controller';
 import Image from '../models/image.model';
 import Video from '../models/video.model';
 import Call from '../models/call.model';
+import ChatMessage from '../models/chat.model';
+import Room from '../models/room.model';
 
 // === Zod schemas ===
 const signInSchema = z.object({
@@ -324,5 +326,36 @@ export const updateCallStatus = async (req: Request, res: Response) => {
     await call.save();
     sendSuccess(res, call, 'Call updated');
   } catch (e) { res.status(500).json({ success:false, message:'Failed to update call' }); }
+};
+
+export const listChatMessages = async (req: Request, res: Response) => {
+  try {
+    const { roomName, limit = 50, before } = req.query as any;
+    if (!roomName) return sendUnauthorized(res, 'roomName is required');
+    const where: any = { roomName };
+    if (before) where.createdAt = { ['lt' as any]: new Date(before) };
+    const messages = await ChatMessage.findAll({ where, order: [['createdAt','DESC']], limit: Number(limit) });
+    sendSuccess(res, messages.reverse(), 'Messages');
+  } catch (e) { res.status(500).json({ success:false, message:'Failed to list messages' }); }
+};
+
+export const createChatMessage = async (req: Request, res: Response) => {
+  try {
+    const { roomName, senderId, message } = req.body;
+    if (!roomName || !message) return sendUnauthorized(res, 'roomName and message are required');
+    const saved = await ChatMessage.create({ roomName, senderId: senderId ? Number(senderId) : null, message });
+    sendSuccess(res, saved, 'Saved');
+  } catch (e) { res.status(500).json({ success:false, message:'Failed to save message' }); }
+};
+
+export const createRoom = async (req: Request, res: Response) => {
+  try {
+    const { callerId, calleeId } = req.body as { callerId: number; calleeId: number };
+    if (!callerId || !calleeId) return sendUnauthorized(res, 'callerId and calleeId are required');
+    const name = `room_${Math.min(callerId, calleeId)}_${Math.max(callerId, calleeId)}`;
+    let room = await Room.findOne({ where: { name } });
+    if (!room) room = await Room.create({ name, callerId, calleeId });
+    sendSuccess(res, room, 'Room ready');
+  } catch (e) { res.status(500).json({ success:false, message:'Failed to create room' }); }
 };
 
