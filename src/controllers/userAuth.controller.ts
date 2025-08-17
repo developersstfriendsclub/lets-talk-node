@@ -50,7 +50,7 @@ export const useSignIn = async (req: Request, res: Response, next: NextFunction)
     //   { expiresIn: '7d' }
     // );
 
-        const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET || 'default_secret', { expiresIn: '7d' });
+    const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET || 'default_secret', { expiresIn: '7d' });
 
 
     // return res.status(200).json({
@@ -311,7 +311,7 @@ export const createCallLog = async (req: Request, res: Response) => {
     const { callerId, calleeId, roomName, startedAt } = req.body;
     const call = await Call.create({ callerId, calleeId, roomName, startedAt: startedAt ? new Date(startedAt) : new Date(), status: 'ringing' });
     sendSuccess(res, call, 'Call created');
-  } catch (e) { res.status(500).json({ success:false, message:'Failed to create call' }); }
+  } catch (e) { res.status(500).json({ success: false, message: 'Failed to create call' }); }
 };
 
 export const updateCallStatus = async (req: Request, res: Response) => {
@@ -325,7 +325,7 @@ export const updateCallStatus = async (req: Request, res: Response) => {
     if (typeof durationSeconds === 'number') (call as any).durationSeconds = durationSeconds;
     await call.save();
     sendSuccess(res, call, 'Call updated');
-  } catch (e) { res.status(500).json({ success:false, message:'Failed to update call' }); }
+  } catch (e) { res.status(500).json({ success: false, message: 'Failed to update call' }); }
 };
 
 export const listChatMessages = async (req: Request, res: Response) => {
@@ -334,9 +334,9 @@ export const listChatMessages = async (req: Request, res: Response) => {
     if (!roomName) return sendUnauthorized(res, 'roomName is required');
     const where: any = { roomName };
     if (before) where.createdAt = { ['lt' as any]: new Date(before) };
-    const messages = await ChatMessage.findAll({ where, order: [['createdAt','DESC']], limit: Number(limit) });
+    const messages = await ChatMessage.findAll({ where, order: [['createdAt', 'DESC']], limit: Number(limit) });
     sendSuccess(res, messages.reverse(), 'Messages');
-  } catch (e) { res.status(500).json({ success:false, message:'Failed to list messages' }); }
+  } catch (e) { res.status(500).json({ success: false, message: 'Failed to list messages' }); }
 };
 
 export const createChatMessage = async (req: Request, res: Response) => {
@@ -345,17 +345,30 @@ export const createChatMessage = async (req: Request, res: Response) => {
     if (!roomName || !message) return sendUnauthorized(res, 'roomName and message are required');
     const saved = await ChatMessage.create({ roomName, senderId: senderId ? Number(senderId) : null, message });
     sendSuccess(res, saved, 'Saved');
-  } catch (e) { res.status(500).json({ success:false, message:'Failed to save message' }); }
+  } catch (e) { res.status(500).json({ success: false, message: 'Failed to save message' }); }
 };
 
 export const createRoom = async (req: Request, res: Response) => {
   try {
     const { callerId, calleeId } = req.body as { callerId: number; calleeId: number };
-    if (!callerId || !calleeId) return sendUnauthorized(res, 'callerId and calleeId are required');
-    const name = `room_${Math.min(callerId, calleeId)}_${Math.max(callerId, calleeId)}`;
+    if (!callerId || !calleeId) {
+      return sendUnauthorized(res, 'callerId and calleeId are required');
+    }
+    console.log("callerId",callerId);
+    console.log("calleeId",calleeId);
+    const name = `room_${calleeId}`;
     let room = await Room.findOne({ where: { name } });
-    if (!room) room = await Room.create({ name, callerId, calleeId });
+    if (!room) {
+      room = await Room.create({ 
+        name:name, 
+        callerId:callerId, 
+        calleeId:calleeId 
+      });
+    }
     sendSuccess(res, room, 'Room ready');
-  } catch (e) { res.status(500).json({ success:false, message:'Failed to create room' }); }
+  } catch (e) { 
+    res.status(500).json({ success: false, message: 'Failed to create room' 
+    }); 
+  }
 };
 

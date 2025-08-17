@@ -86,6 +86,14 @@ export const registerSocketHandlers = (io: Server, socket: Socket) => {
     }
   });
 
+  // Chat invite: let one user invite another to join a specific room
+  socket.on("chat-invite", ({ from, fromName, to, roomName }: { from: string; fromName?: string; to: string; roomName: string }) => {
+    const targetUser = users.get(to);
+    if (targetUser) {
+      io.to(targetUser.socketId).emit("incoming-chat", { from, fromName, roomName });
+    }
+  });
+
   socket.on("join-room", ({ roomName, userName }) => {
     socket.join(roomName);
     if (!rooms.has(roomName)) rooms.set(roomName, new Set());
