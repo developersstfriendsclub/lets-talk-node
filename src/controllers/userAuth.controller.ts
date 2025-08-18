@@ -4,7 +4,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { User } from '../models/user.model'; // Sequelize model
 import { sendSuccess, sendUnauthorized } from '../utils/response';
-import { Op } from 'sequelize';
+import { Op, literal } from 'sequelize';
 import { Role } from '../models/role.model';
 import { maskEmail, maskPhone } from './auth.controller';
 import Image from '../models/image.model';
@@ -118,6 +118,12 @@ export const hostListForUser = async (req: Request, res: Response, next: NextFun
     const users = await User.findAll({
       where: { roleId: { [Op.eq]: 1 } },
       include: [{ model: Image }, { model: Role }],
+      order: [
+        ['is_popular', 'DESC'],
+        [literal('popular_order IS NULL'), 'ASC'],
+        ['popular_order', 'ASC'],
+        ['id', 'DESC'],
+      ],
     });
 
     const maskedUsers = users.map(user => {
@@ -130,6 +136,34 @@ export const hostListForUser = async (req: Request, res: Response, next: NextFun
     });
 
     sendSuccess(res, maskedUsers, 'Host details retrieved successfully');
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const hostListPopularOnly = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const users = await User.findAll({
+      where: { roleId: { [Op.eq]: 1 }, is_popular: { [Op.eq]: true } },
+      include: [{ model: Image }, { model: Role }],
+      order: [
+        [literal('popular_order IS NULL'), 'ASC'],
+        ['popular_order', 'ASC'],
+        ['id', 'DESC'],
+      ],
+      limit: 50,
+    });
+
+    const maskedUsers = users.map(user => {
+      const userObj = user.toJSON();
+      return {
+        ...userObj,
+        email: (userObj as any).email ? maskEmail((userObj as any).email) : null,
+        phone: (userObj as any).phone ? maskPhone((userObj as any).phone) : null,
+      } as any;
+    });
+
+    sendSuccess(res, maskedUsers, 'Popular host list');
   } catch (err) {
     next(err);
   }
@@ -182,17 +216,72 @@ export const getAdminDetailsById = async (req: Request, res: Response, next: Nex
   }
 };
 
+export const getHostDetailsByIdForUser = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { user_id } = (req.method === 'GET' ? req.query : req.body) as any;
+    const idNum = Number(user_id);
+    if (!idNum || Number.isNaN(idNum)) {
+      return sendUnauthorized(res, 'user_id is required');
+    }
+
+    const user = await User.findOne({
+      where: {
+        id: idNum,
+        roleId: { [Op.eq]: 1 }
+      },
+      include: [
+        { model: Image },
+        { model: Video },
+        { model: Role },
+      ],
+    });
+
+    if (!user) {
+      return sendUnauthorized(res, 'User not found');
+    }
+
+    const obj = user.toJSON() as any;
+    const masked = {
+      ...obj,
+      email: obj.email ? maskEmail(obj.email) : null,
+      phone: obj.phone ? maskPhone(obj.phone) : null,
+    };
+    sendSuccess(res, masked, 'Host details retrieved successfully');
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const hostListForAdmin = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const users = await User.findAll({
       where: { roleId: { [Op.eq]: 1 } },
       include: [{ model: Image }, { model: Role }],
+      order: [
+        ['is_popular', 'DESC'],
+        [literal('popular_order IS NULL'), 'ASC'],
+        ['popular_order', 'ASC'],
+        ['id', 'DESC'],
+      ],
     });
 
     sendSuccess(res, users, 'Host details retrieved successfully');
   } catch (err) {
     next(err);
   }
+};
+
+export const setPopularHost = async (req: Request, res: Response) => {
+  try {
+    const { user_id, is_popular, popular_order } = req.body as { user_id: number; is_popular?: boolean; popular_order?: number | null };
+    if (!user_id) return sendUnauthorized(res, 'user_id is required');
+    const user = await User.findByPk(Number(user_id));
+    if (!user) return sendUnauthorized(res, 'User not found');
+    if (typeof is_popular === 'boolean') (user as any).is_popular = is_popular;
+    if (popular_order === null || typeof popular_order === 'number') (user as any).popular_order = popular_order as any;
+    await user.save();
+    sendSuccess(res, user, 'Popular host updated');
+  } catch (e) { res.status(500).json({ success: false, message: 'Failed to update popular host' }); }
 };
 
 export const deleteHostThroughAdmin = async (req: Request, res: Response, next: NextFunction) => {
