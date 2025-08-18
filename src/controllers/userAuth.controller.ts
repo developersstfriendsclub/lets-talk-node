@@ -4,7 +4,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { User } from '../models/user.model'; // Sequelize model
 import { sendSuccess, sendUnauthorized } from '../utils/response';
-import { Op } from 'sequelize';
+import { Op, literal } from 'sequelize';
 import { Role } from '../models/role.model';
 import { maskEmail, maskPhone } from './auth.controller';
 import Image from '../models/image.model';
@@ -50,7 +50,7 @@ export const useSignIn = async (req: Request, res: Response, next: NextFunction)
     //   { expiresIn: '7d' }
     // );
 
-        const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET || 'default_secret', { expiresIn: '7d' });
+    const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET || 'default_secret', { expiresIn: '7d' });
 
 
     // return res.status(200).json({
@@ -118,6 +118,12 @@ export const hostListForUser = async (req: Request, res: Response, next: NextFun
     const users = await User.findAll({
       where: { roleId: { [Op.eq]: 1 } },
       include: [{ model: Image }, { model: Role }],
+      order: [
+        ['is_popular', 'DESC'],
+        [literal('popular_order IS NULL'), 'ASC'],
+        ['popular_order', 'ASC'],
+        ['id', 'DESC'],
+      ],
     });
 
     const maskedUsers = users.map(user => {
@@ -130,6 +136,34 @@ export const hostListForUser = async (req: Request, res: Response, next: NextFun
     });
 
     sendSuccess(res, maskedUsers, 'Host details retrieved successfully');
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const hostListPopularOnly = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const users = await User.findAll({
+      where: { roleId: { [Op.eq]: 1 }, is_popular: { [Op.eq]: true } },
+      include: [{ model: Image }, { model: Role }],
+      order: [
+        [literal('popular_order IS NULL'), 'ASC'],
+        ['popular_order', 'ASC'],
+        ['id', 'DESC'],
+      ],
+      limit: 50,
+    });
+
+    const maskedUsers = users.map(user => {
+      const userObj = user.toJSON();
+      return {
+        ...userObj,
+        email: (userObj as any).email ? maskEmail((userObj as any).email) : null,
+        phone: (userObj as any).phone ? maskPhone((userObj as any).phone) : null,
+      } as any;
+    });
+
+    sendSuccess(res, maskedUsers, 'Popular host list');
   } catch (err) {
     next(err);
   }
@@ -182,17 +216,72 @@ export const getAdminDetailsById = async (req: Request, res: Response, next: Nex
   }
 };
 
+export const getHostDetailsByIdForUser = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { user_id } = (req.method === 'GET' ? req.query : req.body) as any;
+    const idNum = Number(user_id);
+    if (!idNum || Number.isNaN(idNum)) {
+      return sendUnauthorized(res, 'user_id is required');
+    }
+
+    const user = await User.findOne({
+      where: {
+        id: idNum,
+        roleId: { [Op.eq]: 1 }
+      },
+      include: [
+        { model: Image },
+        { model: Video },
+        { model: Role },
+      ],
+    });
+
+    if (!user) {
+      return sendUnauthorized(res, 'User not found');
+    }
+
+    const obj = user.toJSON() as any;
+    const masked = {
+      ...obj,
+      email: obj.email ? maskEmail(obj.email) : null,
+      phone: obj.phone ? maskPhone(obj.phone) : null,
+    };
+    sendSuccess(res, masked, 'Host details retrieved successfully');
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const hostListForAdmin = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const users = await User.findAll({
       where: { roleId: { [Op.eq]: 1 } },
       include: [{ model: Image }, { model: Role }],
+      order: [
+        ['is_popular', 'DESC'],
+        [literal('popular_order IS NULL'), 'ASC'],
+        ['popular_order', 'ASC'],
+        ['id', 'DESC'],
+      ],
     });
 
     sendSuccess(res, users, 'Host details retrieved successfully');
   } catch (err) {
     next(err);
   }
+};
+
+export const setPopularHost = async (req: Request, res: Response) => {
+  try {
+    const { user_id, is_popular, popular_order } = req.body as { user_id: number; is_popular?: boolean; popular_order?: number | null };
+    if (!user_id) return sendUnauthorized(res, 'user_id is required');
+    const user = await User.findByPk(Number(user_id));
+    if (!user) return sendUnauthorized(res, 'User not found');
+    if (typeof is_popular === 'boolean') (user as any).is_popular = is_popular;
+    if (popular_order === null || typeof popular_order === 'number') (user as any).popular_order = popular_order as any;
+    await user.save();
+    sendSuccess(res, user, 'Popular host updated');
+  } catch (e) { res.status(500).json({ success: false, message: 'Failed to update popular host' }); }
 };
 
 export const deleteHostThroughAdmin = async (req: Request, res: Response, next: NextFunction) => {
@@ -311,7 +400,7 @@ export const createCallLog = async (req: Request, res: Response) => {
     const { callerId, calleeId, roomName, startedAt } = req.body;
     const call = await Call.create({ callerId, calleeId, roomName, startedAt: startedAt ? new Date(startedAt) : new Date(), status: 'ringing' });
     sendSuccess(res, call, 'Call created');
-  } catch (e) { res.status(500).json({ success:false, message:'Failed to create call' }); }
+  } catch (e) { res.status(500).json({ success: false, message: 'Failed to create call' }); }
 };
 
 export const updateCallStatus = async (req: Request, res: Response) => {
@@ -325,7 +414,7 @@ export const updateCallStatus = async (req: Request, res: Response) => {
     if (typeof durationSeconds === 'number') (call as any).durationSeconds = durationSeconds;
     await call.save();
     sendSuccess(res, call, 'Call updated');
-  } catch (e) { res.status(500).json({ success:false, message:'Failed to update call' }); }
+  } catch (e) { res.status(500).json({ success: false, message: 'Failed to update call' }); }
 };
 
 export const listChatMessages = async (req: Request, res: Response) => {
@@ -334,9 +423,9 @@ export const listChatMessages = async (req: Request, res: Response) => {
     if (!roomName) return sendUnauthorized(res, 'roomName is required');
     const where: any = { roomName };
     if (before) where.createdAt = { ['lt' as any]: new Date(before) };
-    const messages = await ChatMessage.findAll({ where, order: [['createdAt','DESC']], limit: Number(limit) });
+    const messages = await ChatMessage.findAll({ where, order: [['createdAt', 'DESC']], limit: Number(limit) });
     sendSuccess(res, messages.reverse(), 'Messages');
-  } catch (e) { res.status(500).json({ success:false, message:'Failed to list messages' }); }
+  } catch (e) { res.status(500).json({ success: false, message: 'Failed to list messages' }); }
 };
 
 export const createChatMessage = async (req: Request, res: Response) => {
@@ -345,17 +434,30 @@ export const createChatMessage = async (req: Request, res: Response) => {
     if (!roomName || !message) return sendUnauthorized(res, 'roomName and message are required');
     const saved = await ChatMessage.create({ roomName, senderId: senderId ? Number(senderId) : null, message });
     sendSuccess(res, saved, 'Saved');
-  } catch (e) { res.status(500).json({ success:false, message:'Failed to save message' }); }
+  } catch (e) { res.status(500).json({ success: false, message: 'Failed to save message' }); }
 };
 
 export const createRoom = async (req: Request, res: Response) => {
   try {
     const { callerId, calleeId } = req.body as { callerId: number; calleeId: number };
-    if (!callerId || !calleeId) return sendUnauthorized(res, 'callerId and calleeId are required');
-    const name = `room_${Math.min(callerId, calleeId)}_${Math.max(callerId, calleeId)}`;
+    if (!callerId || !calleeId) {
+      return sendUnauthorized(res, 'callerId and calleeId are required');
+    }
+    console.log("callerId",callerId);
+    console.log("calleeId",calleeId);
+    const name = `room_${calleeId}`;
     let room = await Room.findOne({ where: { name } });
-    if (!room) room = await Room.create({ name, callerId, calleeId });
+    if (!room) {
+      room = await Room.create({ 
+        name:name, 
+        callerId:callerId, 
+        calleeId:calleeId 
+      });
+    }
     sendSuccess(res, room, 'Room ready');
-  } catch (e) { res.status(500).json({ success:false, message:'Failed to create room' }); }
+  } catch (e) { 
+    res.status(500).json({ success: false, message: 'Failed to create room' 
+    }); 
+  }
 };
 

@@ -8,6 +8,8 @@ export class User extends Model {
   public is_verified!: boolean;
   public approval_status!: 'pending' | 'approved' | 'rejected';
   public is_premium!: boolean;
+  public is_popular!: boolean;
+  public popular_order!: number | null;
 }
 
 User.init({
@@ -44,6 +46,15 @@ User.init({
           type: DataTypes.BOOLEAN,
           allowNull: false,
           defaultValue: false,
+        },
+        is_popular: {
+          type: DataTypes.BOOLEAN,
+          allowNull: false,
+          defaultValue: false,
+        },
+        popular_order: {
+          type: DataTypes.INTEGER,
+          allowNull: true,
         },
         approval_status: {
           type: DataTypes.ENUM('pending', 'approved', 'rejected'),
