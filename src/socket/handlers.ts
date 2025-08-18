@@ -230,7 +230,18 @@ export const registerSocketHandlers = (io: Server, socket: Socket) => {
   socket.on("room-message", async ({ roomName, from, message, senderId }) => {
     // Send to everyone else in the room except the sender
     socket.to(roomName).emit("room-message", { from, message, timestamp: Date.now(), senderId });
-    try { await ChatMessage.create({ roomName, senderId: senderId ? Number(senderId) : null, message }); } catch (_) { }
+    try {
+      await ChatMessage.create({
+        roomName,
+        senderId: senderId ? Number(senderId) : null,
+        message
+      });
+    } catch (err) {
+      console.log(`failed to save mesage to room "${roomName}": `, err);
+      socket.emit('Message-save-error', {
+        reason: "Your message couldn't be saved to the chat history"
+      });
+    }
   });
 
   // Typing indicator (room scope)
