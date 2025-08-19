@@ -4,26 +4,40 @@ import { Server as SocketIOServer } from 'socket.io';
 import { registerSocketHandlers } from './handlers';
 
 export const initSocketServer = (server: HTTPServer) => {
-  // const io = new SocketIOServer(server, {
-  //   cors: {
-  //     origin: "*",
-  //     methods: ["GET", "POST"]
-  //   }
-  // });
-
+  const isProduction = (process.env.NODE_ENV || '').toLowerCase() === 'production';
   const io = new SocketIOServer(server, {
     path: '/socket.io',
     transports: ['websocket', 'polling'],
-    cors: {
-      origin: [
-        'https://clientfriendclub.com',
-        'https://*.clientfriendclub.com',
-      ],
-      credentials: true,
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type','Authorization'],
-    },
+    cors: isProduction
+      ? {
+          origin: [
+            'https://clientfriendclub.com',
+          ],
+          credentials: true,
+          methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+          allowedHeaders: ['Content-Type','Authorization'],
+        }
+      : {
+          origin: '*',
+          credentials: false,
+          methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+          allowedHeaders: ['Content-Type','Authorization'],
+        }
   });
+
+  // const io = new SocketIOServer(server, {
+  //   path: '/socket.io',
+  //   transports: ['websocket', 'polling'],
+  //   cors: {
+  //     origin: [
+  //       'https://clientfriendclub.com',
+  //       'https://*.clientfriendclub.com',
+  //     ],
+  //     credentials: true,
+  //     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  //     allowedHeaders: ['Content-Type','Authorization'],
+  //   },
+  // });
 
 
   io.on("connection", (socket) => {
