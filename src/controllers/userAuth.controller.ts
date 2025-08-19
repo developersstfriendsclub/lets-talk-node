@@ -397,8 +397,8 @@ export const userListForHost = async (req: Request, res: Response, next: NextFun
 
 export const createCallLog = async (req: Request, res: Response) => {
   try {
-    const { callerId, calleeId, roomName, startedAt } = req.body;
-    const call = await Call.create({ callerId, calleeId, roomName, startedAt: startedAt ? new Date(startedAt) : new Date(), status: 'ringing' });
+    const { sender_id, receiver_id, roomName, startedAt } = req.body;
+    const call = await Call.create({ sender_id, receiver_id, roomName, startedAt: startedAt ? new Date(startedAt) : new Date(), status: 'ringing' });
     sendSuccess(res, call, 'Call created');
   } catch (e) { res.status(500).json({ success: false, message: 'Failed to create call' }); }
 };
@@ -439,19 +439,26 @@ export const createChatMessage = async (req: Request, res: Response) => {
 
 export const createRoom = async (req: Request, res: Response) => {
   try {
-    const { callerId, calleeId } = req.body as { callerId: number; calleeId: number };
-    if (!callerId || !calleeId) {
-      return sendUnauthorized(res, 'callerId and calleeId are required');
+    const { sender_id, receiver_id } = req.body as any;
+    if (!sender_id || !receiver_id) {
+      return sendUnauthorized(res, 'sender_id and receiver_id are required');
     }
-    console.log("callerId",callerId);
-    console.log("calleeId",calleeId);
-    const name = `room_${calleeId}`;
-    let room = await Room.findOne({ where: { name } });
+    console.log("sender_id",sender_id);
+    console.log("receiver_id",receiver_id);
+    // Reuse any existing room for this pair in either order
+    const a = Math.min(Number(sender_id), Number(receiver_id));
+    const b = Math.max(Number(sender_id), Number(receiver_id));
+    const normalizedName = `room_${a}_${b}`;
+    let room = await Room.findOne({ where: { [Op.or]: [
+      { sender_id: a, receiver_id: b },
+      { sender_id: b, receiver_id: a },
+      { name: normalizedName },
+    ] } as any });
     if (!room) {
       room = await Room.create({ 
-        name:name, 
-        callerId:callerId, 
-        calleeId:calleeId 
+        name: normalizedName, 
+        sender_id: sender_id, 
+        receiver_id: receiver_id 
       });
     }
     sendSuccess(res, room, 'Room ready');

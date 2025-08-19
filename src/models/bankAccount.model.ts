@@ -14,11 +14,15 @@ interface BankAccountAttributes {
   currency: string;
   isActive: boolean;
   isDefault: boolean;
+  is_active: boolean;
+  created_by: number;
+  updated_by: number;
+  deletionDate?: Date | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
-interface BankAccountCreationAttributes extends Optional<BankAccountAttributes, 'id' | 'createdAt' | 'updatedAt'> {}
+interface BankAccountCreationAttributes extends Optional<BankAccountAttributes, 'id' | 'createdAt' | 'updatedAt' | 'is_active' | 'created_by' | 'updated_by' | 'deletionDate'> {}
 
 class BankAccount extends Model<BankAccountAttributes, BankAccountCreationAttributes> implements BankAccountAttributes {
   public id!: number;
@@ -33,6 +37,10 @@ class BankAccount extends Model<BankAccountAttributes, BankAccountCreationAttrib
   public currency!: string;
   public isActive!: boolean;
   public isDefault!: boolean;
+  public is_active!: boolean;
+  public created_by!: number;
+  public updated_by!: number;
+  public deletionDate?: Date | null;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -43,6 +51,25 @@ BankAccount.init(
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
+    },
+    is_active: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
+    created_by: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    updated_by: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    deletionDate: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
     userId: {
       type: DataTypes.INTEGER,
@@ -101,6 +128,8 @@ BankAccount.init(
     sequelize,
     tableName: 'bank_accounts',
     timestamps: true,
+    paranoid: true,
+    deletedAt: 'deletionDate',
   }
 );
 
