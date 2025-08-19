@@ -16,11 +16,15 @@ interface ImageAttributes {
   width?: number;
   height?: number;
   isPublic: boolean;
+  is_active: boolean;
+  created_by: number;
+  updated_by: number;
+  deletionDate?: Date | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
-interface ImageCreationAttributes extends Optional<ImageAttributes, 'id' | 'createdAt' | 'updatedAt'> {}
+interface ImageCreationAttributes extends Optional<ImageAttributes, 'id' | 'createdAt' | 'updatedAt' | 'is_active' | 'created_by' | 'updated_by' | 'deletionDate'> {}
 
 class Image extends Model<ImageAttributes, ImageCreationAttributes> implements ImageAttributes {
   public id!: number;
@@ -37,6 +41,10 @@ class Image extends Model<ImageAttributes, ImageCreationAttributes> implements I
   public width?: number;
   public height?: number;
   public isPublic!: boolean;
+  public is_active!: boolean;
+  public created_by!: number;
+  public updated_by!: number;
+  public deletionDate?: Date | null;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -47,6 +55,25 @@ Image.init(
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
+    },
+    is_active: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
+    created_by: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    updated_by: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    deletionDate: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
     userId: {
       type: DataTypes.INTEGER,
@@ -110,6 +137,8 @@ Image.init(
     sequelize,
     tableName: 'images',
     timestamps: true,
+    paranoid: true,
+    deletedAt: 'deletionDate',
   }
 );
 

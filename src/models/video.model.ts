@@ -19,11 +19,15 @@ interface VideoAttributes {
   thumbnailUrl?: string;
   isPublic: boolean;
   status: 'processing' | 'completed' | 'failed';
+  is_active: boolean;
+  created_by: number;
+  updated_by: number;
+  deletionDate?: Date | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
-interface VideoCreationAttributes extends Optional<VideoAttributes, 'id' | 'createdAt' | 'updatedAt'> {}
+interface VideoCreationAttributes extends Optional<VideoAttributes, 'id' | 'createdAt' | 'updatedAt' | 'is_active' | 'created_by' | 'updated_by' | 'deletionDate'> {}
 
 class Video extends Model<VideoAttributes, VideoCreationAttributes> implements VideoAttributes {
   public id!: number;
@@ -43,6 +47,10 @@ class Video extends Model<VideoAttributes, VideoCreationAttributes> implements V
   public thumbnailUrl?: string;
   public isPublic!: boolean;
   public status!: 'processing' | 'completed' | 'failed';
+  public is_active!: boolean;
+  public created_by!: number;
+  public updated_by!: number;
+  public deletionDate?: Date | null;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -53,6 +61,25 @@ Video.init(
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
+    },
+    is_active: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
+    created_by: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    updated_by: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    deletionDate: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
     userId: {
       type: DataTypes.INTEGER,
@@ -129,6 +156,8 @@ Video.init(
     sequelize,
     tableName: 'videos',
     timestamps: true,
+    paranoid: true,
+    deletedAt: 'deletionDate',
   }
 );
 

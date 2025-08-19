@@ -5,8 +5,8 @@ export type CallStatus = 'ringing' | 'accepted' | 'rejected' | 'ended' | 'missed
 
 interface CallAttributes {
   id: number;
-  callerId: number;
-  calleeId: number;
+  sender_id: number;
+  receiver_id: number;
   roomName: string;
   status: CallStatus;
   startedAt: Date | null;
@@ -21,8 +21,8 @@ type CallCreationAttributes = Optional<CallAttributes, 'id' | 'status' | 'starte
 
 export class Call extends Model<CallAttributes, CallCreationAttributes> implements CallAttributes {
   public id!: number;
-  public callerId!: number;
-  public calleeId!: number;
+  public sender_id!: number;
+  public receiver_id!: number;
   public roomName!: string;
   public status!: CallStatus;
   public startedAt!: Date | null;
@@ -35,8 +35,8 @@ export class Call extends Model<CallAttributes, CallCreationAttributes> implemen
 
 Call.init({
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-  callerId: { type: DataTypes.INTEGER, allowNull: false },
-  calleeId: { type: DataTypes.INTEGER, allowNull: false },
+  sender_id: { type: DataTypes.INTEGER, allowNull: false },
+  receiver_id: { type: DataTypes.INTEGER, allowNull: false },
   roomName: { type: DataTypes.STRING(255), allowNull: false },
   status: { type: DataTypes.ENUM('ringing','accepted','rejected','ended','missed'), allowNull: false, defaultValue: 'ringing' },
   startedAt: { type: DataTypes.DATE, allowNull: true },

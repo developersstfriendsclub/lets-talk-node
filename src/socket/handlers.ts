@@ -24,14 +24,14 @@ export const registerSocketHandlers = (io: Server, socket: Socket) => {
     broadcastUserList(io);
   });
 
-  socket.on("call-user", ({ from, to }: { from: string; to: string }) => {
+  socket.on("call-user", ({ from, to, roomName }: { from: string; to: string; roomName?: string }) => {
     const targetUser = users.get(to);
     const fromUser = users.get(from);
     if (targetUser && fromUser) {
       io.to(targetUser.socketId).emit("incoming-call", {
         from,
         fromUserId: fromUser.userId,
-        suggestedRoom: `room_${fromUser.userId || from}`,
+        suggestedRoom: roomName || `room_${fromUser.userId || from}`,
       });
       io.to(fromUser.socketId).emit("ringing");
     } else {
