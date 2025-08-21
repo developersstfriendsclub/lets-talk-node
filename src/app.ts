@@ -10,10 +10,12 @@ import videoRoutes from './routes/video.routes';
 import bankAccountRoutes from './routes/bankAccount.routes';
 import videoCallRoutes from './routes/videoCall.routes';
 import interestsRoutes from './routes/interests.routes';
+import paymentRoutes from './routes/payments.route';
 
 import { syncDatabase } from './databaseSync';
 import { initSocketServer } from './socket'; // ✅ import socket logic
 import { appConfig } from './config/app';
+import { handleWebhook } from './controllers/payment.controller';
 
 dotenv.config();
 
@@ -28,6 +30,17 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
+
+
+app.post(
+  '/api/v1/payments/webhook',
+  express.raw({ type: 'application/json' }),
+  (req, res, next) => {
+    console.log('webhook raw buffer?', Buffer.isBuffer(req.body));
+    return handleWebhook(req as any, res as any);
+  }
+);
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
@@ -39,6 +52,7 @@ app.use('/api/v1/videos', videoRoutes);
 app.use('/api/v1/bank-accounts', bankAccountRoutes);
 app.use('/api/v1/video-calls', videoCallRoutes);
 app.use('/api/v1/interests', interestsRoutes);
+app.use('/api/v1/payments', paymentRoutes);
 
 // Initialize socket server
 initSocketServer(httpServer);
