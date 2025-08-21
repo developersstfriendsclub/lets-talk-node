@@ -22,7 +22,13 @@ export const initSocketServer = (server: HTTPServer) => {
           credentials: false,
           methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
           allowedHeaders: ['Content-Type','Authorization'],
-        }
+        },
+    // Add better WebRTC support
+    allowEIO3: true,
+    pingTimeout: 60000,
+    pingInterval: 25000,
+    upgradeTimeout: 10000,
+    maxHttpBufferSize: 1e8, // 100MB
   });
 
   // const io = new SocketIOServer(server, {
