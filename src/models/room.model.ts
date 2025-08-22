@@ -33,7 +33,7 @@ export class Room extends Model<RoomAttributes, RoomCreationAttributes> implemen
 
 Room.init({
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-  name: { type: DataTypes.STRING(255), allowNull: false, unique: true },
+  name: { type: DataTypes.TEXT, allowNull: true,},
   sender_id: { type: DataTypes.INTEGER, allowNull: false },
   receiver_id: { type: DataTypes.INTEGER, allowNull: false },
   isActive: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
