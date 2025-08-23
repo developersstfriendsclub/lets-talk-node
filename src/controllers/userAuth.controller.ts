@@ -432,9 +432,22 @@ export const createChatMessage = async (req: Request, res: Response) => {
   try {
     const { roomName, senderId, message } = req.body;
     if (!roomName || !message) return sendUnauthorized(res, 'roomName and message are required');
-    const saved = await ChatMessage.create({ roomName, senderId: senderId ? Number(senderId) : null, message });
+    
+    // Get user ID from the authenticated request
+    const userId = (req as any).user?.id || senderId;
+    
+    const saved = await ChatMessage.create({ 
+      roomName, 
+      senderId: senderId ? Number(senderId) : null, 
+      message,
+      created_by: userId || 0,
+      updated_by: userId || 0
+    });
     sendSuccess(res, saved, 'Saved');
-  } catch (e) { res.status(500).json({ success: false, message: 'Failed to save message' }); }
+  } catch (e) { 
+    console.error('Error creating chat message:', e);
+    res.status(500).json({ success: false, message: 'Failed to save message' }); 
+  }
 };
 
 export const createRoom = async (req: Request, res: Response) => {
@@ -445,6 +458,10 @@ export const createRoom = async (req: Request, res: Response) => {
     }
     console.log("sender_id",sender_id);
     console.log("receiver_id",receiver_id);
+    
+    // Get user ID from the authenticated request
+    const userId = (req as any).user?.id || sender_id;
+    
     // Reuse any existing room for this pair in either order
     const a = Math.min(Number(sender_id), Number(receiver_id));
     const b = Math.max(Number(sender_id), Number(receiver_id));
@@ -458,13 +475,15 @@ export const createRoom = async (req: Request, res: Response) => {
       room = await Room.create({ 
         name: normalizedName, 
         sender_id: sender_id, 
-        receiver_id: receiver_id 
+        receiver_id: receiver_id,
+        created_by: userId || 0,
+        updated_by: userId || 0
       });
     }
     sendSuccess(res, room, 'Room ready');
   } catch (e) { 
-    res.status(500).json({ success: false, message: 'Failed to create room' 
-    }); 
+    console.error('Error creating room:', e);
+    res.status(500).json({ success: false, message: 'Failed to create room' }); 
   }
 };
 

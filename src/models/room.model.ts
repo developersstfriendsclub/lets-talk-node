@@ -6,7 +6,6 @@ interface RoomAttributes {
   name: string;
   sender_id: number;
   receiver_id: number;
-  isActive: boolean;
   is_active: boolean;
   created_by: number;
   updated_by: number;
@@ -15,14 +14,13 @@ interface RoomAttributes {
   updatedAt?: Date;
 }
 
-type RoomCreationAttributes = Optional<RoomAttributes, 'id' | 'isActive' | 'is_active' | 'created_by' | 'updated_by' | 'deletionDate'>;
+type RoomCreationAttributes = Optional<RoomAttributes, 'id' | 'is_active' | 'created_by' | 'updated_by' | 'deletionDate'>;
 
 export class Room extends Model<RoomAttributes, RoomCreationAttributes> implements RoomAttributes {
   public id!: number;
   public name!: string;
   public sender_id!: number;
   public receiver_id!: number;
-  public isActive!: boolean;
   public is_active!: boolean;
   public created_by!: number;
   public updated_by!: number;
@@ -33,10 +31,9 @@ export class Room extends Model<RoomAttributes, RoomCreationAttributes> implemen
 
 Room.init({
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-  name: { type: DataTypes.TEXT, allowNull: true,},
+  name: { type: DataTypes.STRING(255), allowNull: true },
   sender_id: { type: DataTypes.INTEGER, allowNull: false },
   receiver_id: { type: DataTypes.INTEGER, allowNull: false },
-  isActive: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
   is_active: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
   created_by: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
   updated_by: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
