@@ -2,6 +2,12 @@
 import { Server, Socket } from 'socket.io';
 import ChatMessage from '../models/chat.model';
 
+/*
+ NOTE: I only make a small improvement: when callee accepts the call, I forward the
+ * suggested roomName back to the caller in the 'call-accepted' event so the caller can
+ * navigate to the correct room reliably. This does not break the existing flow.
+*/
+
 interface User {
   socketId: string;
   userName: string;
@@ -31,11 +37,11 @@ export const registerSocketHandlers = (io: Server, socket: Socket) => {
 
   socket.on("call-user", ({ from, to, roomName }: { from: string; to: string; roomName?: string }) => {
     console.log(`Call request from ${from} to ${to} in room ${roomName}`);
-    
+
     // Try to find target user by userId first, then by userName
     let targetUser = null;
     let targetSocketId = null;
-    
+
     // Check if 'to' is a userId
     if (userToSocket.has(to)) {
       targetSocketId = userToSocket.get(to);
@@ -50,22 +56,22 @@ export const registerSocketHandlers = (io: Server, socket: Socket) => {
       targetUser = users.get(to);
       targetSocketId = targetUser?.socketId;
     }
-    
+
     const fromUser = users.get(from);
-    
+
     if (targetUser && targetSocketId && fromUser) {
       console.log(`Sending incoming call to ${targetUser.userName} at socket ${targetSocketId}`);
-      
+
       // Send incoming call notification
       io.to(targetSocketId).emit("incoming-call", {
         from: fromUser.userName,
         fromUserId: fromUser.userId,
         suggestedRoom: roomName || `room_${fromUser.userId || from}_${targetUser.userId || to}`,
       });
-      
+
       // Send ringing notification to caller
       io.to(fromUser.socketId).emit("ringing");
-      
+
       // Set a timeout for call acceptance
       setTimeout(() => {
         // Check if call is still pending
@@ -75,7 +81,7 @@ export const registerSocketHandlers = (io: Server, socket: Socket) => {
           });
         }
       }, 30000); // 30 second timeout
-      
+
     } else {
       console.log(`Target user not found: ${to}`);
       io.to(fromUser?.socketId || '').emit("call-rejected", {
@@ -84,14 +90,15 @@ export const registerSocketHandlers = (io: Server, socket: Socket) => {
     }
   });
 
-  socket.on("accept-call", ({ from, to }) => {
+  socket.on("accept-call", ({ from, to, roomName }: { from: string; to: string; roomName?: string }) => {
     console.log(`Call accepted from ${from} to ${to}`);
     const targetUser = users.get(to);
     const fromUser = users.get(from);
     if (targetUser && fromUser) {
       io.to(targetUser.socketId).emit("call-accepted", {
         from: fromUser.userName,
-        fromUserId: fromUser.userId
+        fromUserId: fromUser.userId,
+        roomName: roomName
       });
     }
   });
@@ -147,12 +154,12 @@ export const registerSocketHandlers = (io: Server, socket: Socket) => {
     if (!rooms.has(roomName)) rooms.set(roomName, new Set());
     rooms.get(roomName)!.add(socket.id);
     const participants = Array.from(rooms.get(roomName) || []);
-    
+
     console.log(`Room ${roomName} participants:`, participants);
-    
+
     io.to(roomName).emit("room-participants", { roomName, participants });
     socket.to(roomName).emit("user-joined", { userName, socketId: socket.id });
-    
+
     // Notify the newly joined client it's ready to start negotiation if another peer exists
     if ((rooms.get(roomName)?.size || 0) >= 2) {
       socket.emit("room-ready", { roomName, participants });
@@ -210,9 +217,9 @@ export const registerSocketHandlers = (io: Server, socket: Socket) => {
   socket.on("room-message", async ({ roomName, from, message, senderId }) => {
     // Send to everyone else in the room except the sender
     socket.to(roomName).emit("room-message", { from, message, timestamp: Date.now(), senderId });
-    try { 
-      await ChatMessage.create({ roomName, senderId: senderId ? Number(senderId) : null, message }); 
-    } catch(e) {
+    try {
+      await ChatMessage.create({ roomName, senderId: senderId ? Number(senderId) : null, message });
+    } catch (e) {
       console.error('Failed to save chat message:', e);
     }
   });
@@ -260,7 +267,7 @@ export const registerSocketHandlers = (io: Server, socket: Socket) => {
       broadcastUserList(io);
       console.log(`User ${userName} disconnected`);
     }
-    
+
     // Cleanup from all rooms
     for (const [roomName, set] of rooms) {
       if (set.has(socket.id)) {
