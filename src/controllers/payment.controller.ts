@@ -5,6 +5,7 @@ import { sendSuccess, sendError, sendValidationError } from '../utils/response'
 import Payment from '../models/payment.model';
 import { sequelize } from '../config/database';
 import { User } from '../models/user.model';
+import { col, fn } from 'sequelize';
 
 const razorpay = new Razorpay({
     key_id: process.env.RAZORPAY_KEY_ID!,
@@ -12,9 +13,41 @@ const razorpay = new Razorpay({
 });
 
 const calculateSecondsFromAmount = (amountPaise: number): number => {
-    // Convert paise to rupees, then to seconds (1 rupee = 60 seconds)
-    // TODO: Need to add real business logic
-    return Math.floor((amountPaise / 100) * 60);
+    const amountRupees = amountPaise / 100;
+
+    // Helper to convert minutes to seconds
+    const toSeconds = (minutes: number) => minutes * 60;
+
+    // Tiered business logic for recharge packs
+    if (amountRupees === 25) {
+        return toSeconds(1); // 1 minute
+    } else if (amountRupees === 50) {
+        return toSeconds(2); // 2 minutes
+    } else if (amountRupees === 100) {
+        return toSeconds(4); // 4 minutes
+    } else if (amountRupees === 200) {
+        return toSeconds(7); // 7 minutes
+    } else if (amountRupees === 400) {
+        return toSeconds(10); // 10 minutes
+    } else if (amountRupees === 800) {
+        return toSeconds(13); // 13 minutes
+    } else if (amountRupees === 1600) {
+        return toSeconds(18); // 18 minutes
+    } else if (amountRupees === 2800) {
+        return toSeconds(27); // 27 minutes
+    } else if (amountRupees === 4500) {
+        return toSeconds(60); // 1 hour
+    } else if (amountRupees === 8900) {
+        return toSeconds(130); // 2 hours 10 minutes
+    } else if (amountRupees === 17800) {
+        // 4h 20m regular + 15m extra = 275 minutes
+        return toSeconds(275);
+    } else if (amountRupees === 35600) {
+        return toSeconds(480); // 8 hours
+    }
+
+    console.warn(`An amount of ₹${amountRupees} did not match any predefined recharge pack.`);
+    return 0;
 };
 
 export const createOrder = async (req: Request, res: Response) => {
@@ -47,15 +80,11 @@ export const createOrder = async (req: Request, res: Response) => {
             await t.rollback();
             return sendValidationError(res, 'Invalid amount. Amount should be in paise (e.g., 10000 paise = ₹100)');
         }
+        const usersEarnedSeconds = calculateSecondsFromAmount(amount);
 
-        if (amount < 100) {
+        if (usersEarnedSeconds <= 0) {
             await t.rollback();
-            return sendValidationError(res, 'Minimum recharge amount is ₹1 (100 paise)');
-        }
-
-        if (amount > 5000000) {
-            await t.rollback();
-            return sendValidationError(res, 'Maximum recharge amount is ₹50,000');
+            return sendValidationError(res, 'Invalid recharge amount. Please select one of the available recharge packs.');
         }
 
         const options = {
@@ -67,7 +96,7 @@ export const createOrder = async (req: Request, res: Response) => {
 
         const order = await razorpay.orders.create(options);
 
-        const usersEarnedSeconds = calculateSecondsFromAmount(amount);
+        // const usersEarnedSeconds = calculateSecondsFromAmount(amount);
 
         const payment = await Payment.create({
             transactionId: order.id,
@@ -165,8 +194,6 @@ export const verifyPayment = async (req: Request, res: Response) => {
             updated_by: userId
         }, { transaction: t });
 
-        // TODO: Here you will later add logic to credit minutes to the user's main balance.
-        // For now, the earned seconds are correctly stored in the payment record itself.
 
         await t.commit();
 
@@ -268,5 +295,80 @@ export const handleWebhook = async (req: Request, res: Response) => {
         console.error('Webhook processing error:', error);
 
         res.status(500).json({ status: 'error' });
+    }
+};
+
+export const getTotalPayments = async (req: Request, res: Response) => {
+    try {
+        // This endpoint aggregates data across all users, so it should be
+        const totalResult = await Payment.findOne({
+            attributes: [
+                // Use Sequelize's aggregation function `SUM` on the 'amount' column.
+                [fn('SUM', col('amount')), 'totalAmount']
+            ],
+            where: {
+                // Only include payments that were successfully completed.
+                status: 'captured'
+            },
+            raw: true // Ensures we get a plain JSON object back.
+        });
+
+        // The result of SUM can be null if there are no payments, so we handle that case.
+        const totalAmountPaise = totalResult && (totalResult as any).totalAmount ? parseInt((totalResult as any).totalAmount, 10) : 0;
+
+        // Convert the final sum from paise to rupees for a user-friendly response.
+        const totalAmountRupees = totalAmountPaise / 100;
+
+        return sendSuccess(res, {
+            totalAmount: totalAmountRupees,
+            currency: 'INR'
+        }, 'Total payments retrieved successfully.');
+    } catch (error) {
+        console.error('getTotalPayments error:', error);
+        return sendError(res, 'Failed to retrieve total payments', 500, error);
+
+    }
+}
+
+export const getTotalEarnedTime = async (req: Request, res: Response) => {
+    try {
+
+        const userId = (req as any).user?.id;
+        if (!userId) {
+            return sendValidationError(res, 'User authentication required', 401);
+        }
+
+        // Find the sum of earned seconds for this specific user.
+        const totalResult = await Payment.findOne({
+            attributes: [
+                [fn('SUM', col('usersEarnedSeconds')), 'totalSeconds']
+            ],
+            where: {
+                userId, // Filter by the authenticated user's ID.
+                status: 'captured' // Only count successful payments.
+            },
+            raw: true
+        });
+
+        const totalEarnedSeconds = totalResult && (totalResult as any).totalSeconds ? parseInt((totalResult as any).totalSeconds, 10) : 0;
+
+        // Convert the total seconds into a more readable format.
+        const totalMinutes = Math.floor(totalEarnedSeconds / 60);
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+
+        // Create a human-readable string.
+        const formattedTime = `${hours} hour(s) and ${minutes} minute(s)`;
+
+        // Return all formats to give the frontend flexibility.
+        return sendSuccess(res, {
+            totalEarnedSeconds,
+            totalEarnedMinutes: totalMinutes,
+            formattedTime,
+        }, 'Total earned time retrieved successfully.');
+
+    } catch (error) {
+        console.error('getTotalEarnedTime error:', error);
+        return sendError(res, 'Failed to retrieve total earned time', 500, error);
     }
 };
