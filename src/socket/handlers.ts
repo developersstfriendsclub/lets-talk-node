@@ -1,6 +1,7 @@
 // src/sockets/handlers.ts
 import { Server, Socket } from 'socket.io';
 import ChatMessage from '../models/chat.model';
+import Call from '../models/call.model';
 
 /*
  NOTE: I only make a small improvement: when callee accepts the call, I forward the
@@ -35,8 +36,8 @@ export const registerSocketHandlers = (io: Server, socket: Socket) => {
     console.log(`User registered: ${userName} (${userId}) with socket ${socket.id}`);
   });
 
-  socket.on("call-user", ({ from, to, roomName }: { from: string; to: string; roomName?: string }) => {
-    console.log(`Call request from ${from} to ${to} in room ${roomName}`);
+  socket.on("call-user", async ({ from, to, roomName, callType = 'video' }: { from: string; to: string; roomName?: string; callType?: 'audio' | 'video' }) => {
+    console.log(`Call request from ${from} to ${to} in room ${roomName} (${callType})`);
 
     // Try to find target user by userId first, then by userName
     let targetUser = null;
@@ -62,26 +63,53 @@ export const registerSocketHandlers = (io: Server, socket: Socket) => {
     if (targetUser && targetSocketId && fromUser) {
       console.log(`Sending incoming call to ${targetUser.userName} at socket ${targetSocketId}`);
 
-      // Send incoming call notification
-      io.to(targetSocketId).emit("incoming-call", {
-        from: fromUser.userName,
-        fromUserId: fromUser.userId,
-        suggestedRoom: roomName || `room_${fromUser.userId || from}_${targetUser.userId || to}`,
-      });
+      try {
+        // Create call log in database
+        const call = await Call.create({
+          sender_id: fromUser.userId ? Number(fromUser.userId) : 0,
+          receiver_id: targetUser.userId ? Number(targetUser.userId) : 0,
+          roomName: roomName || `room_${fromUser.userId || from}_${targetUser.userId || to}`,
+          status: 'ringing',
+          callType,
+          startedAt: new Date(),
+          created_by: fromUser.userId ? Number(fromUser.userId) : 0,
+          updated_by: fromUser.userId ? Number(fromUser.userId) : 0
+        });
 
-      // Send ringing notification to caller
-      io.to(fromUser.socketId).emit("ringing");
+        // Send incoming call notification
+        io.to(targetSocketId).emit("incoming-call", {
+          from: fromUser.userName,
+          fromUserId: fromUser.userId,
+          suggestedRoom: roomName || `room_${fromUser.userId || from}_${targetUser.userId || to}`,
+          callId: call.id
+        });
 
-      // Set a timeout for call acceptance
-      setTimeout(() => {
-        // Check if call is still pending
-        if (targetSocketId && io.sockets.sockets.has(targetSocketId)) {
-          io.to(fromUser.socketId).emit("call-timeout", {
-            reason: "Call not answered"
-          });
-        }
-      }, 30000); // 30 second timeout
+        // Send ringing notification to caller
+        io.to(fromUser.socketId).emit("ringing");
 
+        // Set a timeout for call acceptance
+        setTimeout(async () => {
+          // Check if call is still pending
+          if (targetSocketId && io.sockets.sockets.has(targetSocketId)) {
+            // Update call status to missed
+            await call.update({
+              status: 'missed',
+              endedAt: new Date(),
+              updated_by: fromUser.userId ? Number(fromUser.userId) : 0
+            });
+
+            io.to(fromUser.socketId).emit("call-timeout", {
+              reason: "Call not answered"
+            });
+          }
+        }, 30000); // 30 second timeout
+
+      } catch (error) {
+        console.error('Failed to create call log:', error);
+        io.to(fromUser.socketId).emit("call-rejected", {
+          reason: "Failed to create call log"
+        });
+      }
     } else {
       console.log(`Target user not found: ${to}`);
       io.to(fromUser?.socketId || '').emit("call-rejected", {
@@ -90,34 +118,86 @@ export const registerSocketHandlers = (io: Server, socket: Socket) => {
     }
   });
 
-  socket.on("accept-call", ({ from, to, roomName }: { from: string; to: string; roomName?: string }) => {
+  socket.on("accept-call", async ({ from, to, roomName, callId }: { from: string; to: string; roomName?: string; callId?: number }) => {
     console.log(`Call accepted from ${from} to ${to}`);
-    const targetUser = users.get(to);
-    const fromUser = users.get(from);
-    if (targetUser && fromUser) {
-      io.to(targetUser.socketId).emit("call-accepted", {
-        from: fromUser.userName,
-        fromUserId: fromUser.userId,
-        roomName: roomName
-      });
+    
+    try {
+      if (callId) {
+        // Update call status to accepted
+        await Call.update({
+          status: 'accepted',
+          answeredAt: new Date(),
+          updated_by: from ? Number(from) : 0
+        }, {
+          where: { id: callId }
+        });
+      }
+
+      const targetUser = users.get(to);
+      const fromUser = users.get(from);
+      if (targetUser && fromUser) {
+        io.to(targetUser.socketId).emit("call-accepted", {
+          from: fromUser.userName,
+          fromUserId: fromUser.userId,
+          roomName: roomName
+        });
+      }
+    } catch (error) {
+      console.error('Failed to update call status:', error);
     }
   });
 
-  socket.on("reject-call", ({ from, to }) => {
+  socket.on("reject-call", async ({ from, to, callId }: { from: string; to: string; callId?: number }) => {
     console.log(`Call rejected from ${from} to ${to}`);
-    const targetUser = users.get(to);
-    if (targetUser) {
-      io.to(targetUser.socketId).emit("call-rejected", {
-        reason: "Call rejected"
-      });
+    
+    try {
+      if (callId) {
+        // Update call status to rejected
+        await Call.update({
+          status: 'rejected',
+          endedAt: new Date(),
+          updated_by: from ? Number(from) : 0
+        }, {
+          where: { id: callId }
+        });
+      }
+
+      const targetUser = users.get(to);
+      if (targetUser) {
+        io.to(targetUser.socketId).emit("call-rejected", {
+          reason: "Call rejected"
+        });
+      }
+    } catch (error) {
+      console.error('Failed to update call status:', error);
     }
   });
 
-  socket.on("end-call", ({ from, to }) => {
+  socket.on("end-call", async ({ from, to, roomName, durationSeconds }: { from: string; to: string; roomName?: string; durationSeconds?: number }) => {
     console.log(`Call ended from ${from} to ${to}`);
-    const targetUser = users.get(to);
-    if (targetUser) {
-      io.to(targetUser.socketId).emit("call-ended");
+    
+    try {
+      if (roomName) {
+        // Update call status to ended
+        await Call.update({
+          status: 'ended',
+          endedAt: new Date(),
+          durationSeconds: durationSeconds || 0,
+          updated_by: from ? Number(from) : 0
+        }, {
+          where: { 
+            roomName,
+            status: 'accepted'
+          }
+        });
+      }
+
+      const targetUser = users.get(to);
+      if (targetUser) {
+        io.to(targetUser.socketId).emit("call-ended");
+      }
+    } catch (error) {
+      console.error('Failed to update call status:', error);
     }
   });
 
@@ -217,8 +297,18 @@ export const registerSocketHandlers = (io: Server, socket: Socket) => {
   socket.on("room-message", async ({ roomName, from, message, senderId }) => {
     // Send to everyone else in the room except the sender
     socket.to(roomName).emit("room-message", { from, message, timestamp: Date.now(), senderId });
+    
     try {
-      await ChatMessage.create({ roomName, senderId: senderId ? Number(senderId) : null, message });
+      // Save chat message to database
+      await ChatMessage.create({
+        roomName,
+        senderId: senderId ? Number(senderId) : null,
+        message,
+        messageType: 'text',
+        created_by: senderId ? Number(senderId) : 0,
+        updated_by: senderId ? Number(senderId) : 0
+      });
+      console.log(`Chat message saved to database for room: ${roomName}`);
     } catch (e) {
       console.error('Failed to save chat message:', e);
     }
